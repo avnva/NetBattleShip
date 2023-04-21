@@ -1,0 +1,30 @@
+﻿<Window x:Class="BattleShip.LogInView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:local="clr-namespace:BattleShip"
+        mc:Ignorable="d"
+        Title="Морской бой по локальной сети" Height="350" Width="600">
+    <DockPanel  LastChildFill="False">
+        <Grid DockPanel.Dock="Top" Height="195" >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Label Style="{StaticResource LabelTemplate}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" >Введите IP адрес противника:</Label>
+            <Label Style="{StaticResource LabelTemplate}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" >Введите Ваше имя:</Label>
+            <xctk:MaskedTextBox Mask="000.000.000.000" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" x:Name="tb_ip" TextAlignment="Center" />
+            <TextBox Grid.Row="2" Grid.Column="2" x:Name="tb_playername" Margin="0,10,0,10" Width="250" HorizontalAlignment="Center"/>
+        </Grid>
+    </DockPanel>
+</Window>
