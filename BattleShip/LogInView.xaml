@@ -6,9 +6,54 @@
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:local="clr-namespace:BattleShip"
         mc:Ignorable="d"
-        Title="Морской бой по локальной сети" Height="350" Width="600">
-    <DockPanel  LastChildFill="False">
-        <Grid DockPanel.Dock="Top" Height="195" >
+        Title="Морской бой по локальной сети" Height="368" Width="600"
+        WindowStartupLocation="CenterScreen"
+        Icon="{StaticResource AppIcon}"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/RussianLocalization.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <SolidColorBrush x:Key="Button.MouseOver.Background" Color="#FFBEE6FD"/>
+            <SolidColorBrush x:Key="Button.MouseOver.Border" Color="#FF3C7FB1"/>
+            <SolidColorBrush x:Key="Button.Pressed.Background" Color="#FFC4E5F6"/>
+            <SolidColorBrush x:Key="Button.Pressed.Border" Color="#FF2C628B"/>
+            <SolidColorBrush x:Key="Button.Disabled.Background" Color="#FFF4F4F4"/>
+            <SolidColorBrush x:Key="Button.Disabled.Border" Color="#FFADB2B5"/>
+            <SolidColorBrush x:Key="Button.Disabled.Foreground" Color="#FF838383"/>
+            <ControlTemplate x:Key="btLogIn" TargetType="{x:Type ButtonBase}">
+                <Border x:Name="border" CornerRadius="15" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="true">
+                    <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="Button.IsDefaulted" Value="true">
+                        <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                    </Trigger>
+                    <Trigger Property="IsMouseOver" Value="true">
+                        <Setter Property="Background" TargetName="border" Value="{StaticResource Button.MouseOver.Background}"/>
+                        <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.MouseOver.Border}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="true">
+                        <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Pressed.Background}"/>
+                        <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Pressed.Border}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="false">
+                        <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Disabled.Background}"/>
+                        <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Disabled.Border}"/>
+                        <Setter Property="TextElement.Foreground" TargetName="contentPresenter" Value="{StaticResource Button.Disabled.Foreground}"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+        
+    <DockPanel  LastChildFill="False" >
+        <DockPanel.Background>
+            <ImageBrush ImageSource="/Images/Waves.jpg"/>
+        </DockPanel.Background>
+        <Grid DockPanel.Dock="Top" Height="180" Width="600" >
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="10"/>
                 <ColumnDefinition Width="*" />
@@ -19,12 +64,15 @@
                 <RowDefinition Height="40"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="20"/>
             </Grid.RowDefinitions>
-            <Label Style="{StaticResource LabelTemplate}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" >Введите IP адрес противника:</Label>
-            <Label Style="{StaticResource LabelTemplate}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" >Введите Ваше имя:</Label>
-            <xctk:MaskedTextBox Mask="000.000.000.000" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" x:Name="tb_ip" TextAlignment="Center" />
-            <TextBox Grid.Row="2" Grid.Column="2" x:Name="tb_playername" Margin="0,10,0,10" Width="250" HorizontalAlignment="Center"/>
+            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource IPHeading}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" />
+            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource NameHeading}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" />
+            <xctk:MaskedTextBox Mask="000/000/000/000" Width="250" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" x:Name="tb_ip" TextAlignment="Center" />
+            <TextBox Style="{StaticResource TextBoxStyle}" Grid.Row="2" Grid.Column="2" x:Name="tb_playername" Margin="0,10,0,10"/>
+        </Grid>
+        <Grid DockPanel.Dock="Bottom" Height="155" Width="600">
+            <Button Template="{DynamicResource btLogIn}" Content="{StaticResource LogInButtonHeading}" Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"/>
         </Grid>
     </DockPanel>
 </Window>
