@@ -67,8 +67,8 @@
                 <RowDefinition Height="20"/>
             </Grid.RowDefinitions>
             <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource IPHeading}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" />
-            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource NameHeading}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" />
-            <xctk:MaskedTextBox Mask="000/000/000/000" Width="250" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" x:Name="tb_ip" TextAlignment="Center" />
+            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource NameHeading}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" LostFocus="tbIP_LostFocus"/>
+            <xctk:MaskedTextBox x:Name="tbIP" Mask="000/000/000/000" Width="250" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" TextAlignment="Center" LostFocus="tbIP_LostFocus" />
             <TextBox Style="{StaticResource TextBoxStyle}" Grid.Row="2" Grid.Column="2" x:Name="tb_playername" Margin="0,10,0,10"/>
         </Grid>
         <Grid DockPanel.Dock="Bottom" Height="155" Width="600">
