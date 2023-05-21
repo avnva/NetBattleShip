@@ -14,19 +14,19 @@ public class GameRoomManager
     {
         _gameRooms = new List<GameRoom>();
     }
-    public bool IsAvailableRoomExists()
-    {
-        GameRoom availableRoom = GetAvailableRoom();
-        if (availableRoom != null)
-            return true;
-        else
-            return false;
-    }
+    //public bool IsAvailableRoomExists()
+    //{
+    //    GameRoom connectionRoom = GetConnectionRoom();
+    //    if (connectionRoom != null)
+    //        return true;
+    //    else
+    //        return false;
+    //}
 
-    public void AddPlayerToAvailableRoom(TcpClient player)
+    public void AddPlayerToExistsRoom(TcpClient player, Port port)
     {
-        GameRoom availableRoom = GetAvailableRoom();
-        availableRoom.AddPlayer(player);
+        GameRoom connectionRoom = GetConnectionRoom(port);
+        connectionRoom.AddPlayer(player);
     }
     public void AddPlayerToNewRoom(TcpClient player, Port port) 
     {
@@ -34,18 +34,31 @@ public class GameRoomManager
         newRoom.AddPlayer(player);
     }
 
-    private GameRoom GetAvailableRoom()
+    private GameRoom GetConnectionRoom(Port port)
     {
-        GameRoom availableRoom = null;
+        GameRoom connectionRoom = null;
         foreach (GameRoom room in _gameRooms)
         {
-            if (!room.IsFull())
+            if (room.Port == port || !room.IsFull())
             {
-                availableRoom = room;
-                break;
+                if (!room.IsFull())
+                {
+                    if (!room.IsEmpty())
+                    {
+                        connectionRoom = room;
+                        break;
+                    }
+                    else
+                        throw new ArgumentException("Противник отключился от игры");
+                }
+                else
+                    throw new ArgumentException("Комната уже занята");
             }
+            else
+                throw new ArgumentException("Комната не найдена");
         }
-        return availableRoom;
+
+        return connectionRoom;
     }
 
     public void RemovePlayerFromGameRoom(GameRoom gameRoom, TcpClient player)

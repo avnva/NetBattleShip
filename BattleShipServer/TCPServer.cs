@@ -12,13 +12,14 @@ public class TCPServer
 {
     private ILogger _logger;
     private Port[] _ports;
-    private int startPort = 8888;
+    private Port startPort;
     private int portsAmount = 1000;
     private GameRoomManager roomManager;
 
     public TCPServer(ILogger logger)
     {
         _ports = new Port[1000];
+        Port startPort = new Port(8888, false);
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         roomManager = new GameRoomManager();
         InitializePorts();
@@ -26,7 +27,7 @@ public class TCPServer
 
     public async Task Start()
     {
-        TcpListener listener = new TcpListener(IPAddress.Any, startPort);
+        TcpListener listener = new TcpListener(IPAddress.Any, startPort.PortValue);
         listener.Start();
 
         _logger.Log(" >> Server started.");
@@ -34,28 +35,63 @@ public class TCPServer
         {
             TcpClient client = await listener.AcceptTcpClientAsync();
 
-            _logger.Log($" >> Client {client.Client?.RemoteEndPoint} connected on port 8888");
+            _logger.Log($" >> Client {client.Client?.RemoteEndPoint} connected on port {startPort.PortValue}");
 
-            if (roomManager.IsAvailableRoomExists())
-                roomManager.AddPlayerToAvailableRoom(client);
-            else
-            {
-                Port port = FindFreePort();
-                _logger.Log($" >> Found new port: {port.PortValue}");
-                
-                await SendNewPort(client, port);
-                _logger.Log($" >> Waiting for connection");
-
-                TcpClient cl = await WaitForConnection(port);
-                _logger.Log($" >> GameRoom connected on port {port.PortValue}");
-
-                roomManager.AddPlayerToNewRoom(client, port);
-            }
-
-            //ClientHandler clientHandler = new ClientHandler(cl, _logger, port);
-            //clientHandler.Start();
+            ClientHandler clientHandler = new ClientHandler(client, _logger, startPort);
+            clientHandler.GetNewPortRequested += HandleCreateNewGameRoom;
+            clientHandler.GetExistingPortRequested += HandleJoinToExistingGameRoom;
+            clientHandler.Start();
         }
     }
+
+    
+
+    private async Task CreateNewGame(TcpClient client)
+    {
+
+        Port newPort = FindFreePort();
+        _logger.Log($" >> Found new port: {newPort.PortValue}");
+        
+        await SendNewPort(client, newPort);
+        _logger.Log($" >> Waiting for connection");
+
+        TcpClient cl = await WaitForConnection(newPort);
+        _logger.Log($" >> Client connected on port {newPort.PortValue}");
+
+        ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
+        clientHandler.Start();
+
+        AddClientToNewGameRoom(cl, newPort);
+        _logger.Log($" >> Client connected to new game room");
+    }
+
+    private async Task HandleCreateNewGameRoom(TcpClient client)
+    {
+        
+        await CreateNewGame(client);
+    }
+
+    private async Task HandleJoinToExistingGameRoom(TcpClient client, int portValue)
+    {
+        Port ConnectionPort = null;
+        foreach (Port port in _ports)
+            if (port.PortValue == portValue || port.Occupied == true)
+                ConnectionPort = port;
+        if (ConnectionPort == null)
+            throw new ArgumentNullException("Такой порт не существует");
+        else
+            roomManager.AddPlayerToExistsRoom(client, ConnectionPort);
+    }
+
+
+
+
+
+    private void AddClientToNewGameRoom(TcpClient client, Port port)
+    {
+        roomManager.AddPlayerToNewRoom(client, port);
+    }
+
 
     private async Task SendNewPort(TcpClient client, Port port)
     {
@@ -95,7 +131,7 @@ public class TCPServer
     private void InitializePorts()
     {
         for (int i = 0; i < portsAmount; i++)
-            _ports[i] = new Port(startPort + 1 + i, false);
+            _ports[i] = new Port(startPort.PortValue + 1 + i, false);
     }
 
     private void Disconnect(TcpClient client)

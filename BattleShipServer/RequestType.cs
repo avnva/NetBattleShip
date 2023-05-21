@@ -2,9 +2,12 @@
 
 public enum RequestType : byte
 {
-    Port = 0,
-    IPaddressopponent = 1,
-    Name = 2
+    CreateNewGame = 0,
+    JoinToGame = 1,
+    Port = 2,
+    Name = 3,
+    Disconnect = 4,
+    Exception = 5
 
 
 }

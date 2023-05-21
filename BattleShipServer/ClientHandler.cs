@@ -13,8 +13,38 @@ public class ClientHandler : IDisposable
     private ILogger logger;
     private Port port;
     private NetworkStream networkStream;
-    private TCPServer server;
     public GameRoom GameRoom { get; private set; }
+
+    public event Func<TcpClient, int, Task> GetExistingPortRequested;
+    public event Func<TcpClient, Task> GetNewPortRequested;
+    private async Task CreateNewGameRoom()
+    {
+        if (GetNewPortRequested != null)
+            await GetNewPortRequested.Invoke(client);
+        else
+            throw new ArgumentNullException(nameof(GetNewPortRequested));
+    }
+
+    private async Task JoinToExistingGameRoom(string PortValue)
+    {
+        int ConnectionPortValue = 0;
+        if (int.TryParse(PortValue, out int number))
+            ConnectionPortValue = number;
+        else
+            throw new ArgumentException(nameof(PortValue));
+
+        if (ConnectionPortValue != 0)
+        {
+            if (GetExistingPortRequested != null)
+                await GetExistingPortRequested.Invoke(client, ConnectionPortValue);
+            else
+                throw new ArgumentNullException(nameof(GetExistingPortRequested));
+        }
+        else
+            throw new ArgumentException();
+    }
+
+    public event EventHandler Check;
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
     {
@@ -24,7 +54,6 @@ public class ClientHandler : IDisposable
         this.client = client;
         networkStream = this.client.GetStream();
         this.logger = logger;
-        //this.server = server;
     }
 
     public void Start()
@@ -78,16 +107,17 @@ public class ClientHandler : IDisposable
         {
             switch ((RequestType)type[0])
             {
-                case RequestType.DirectoryContents:
-                    await SendStringAsync(GetDirectoryContents(request), RequestType.DirectoryContents);
+                case RequestType.CreateNewGame:
+                    //выдать игровую комнату и новый порт
+                    await CreateNewGameRoom();
                     break;
-                case RequestType.FileContents:
-                    await SendFileContentsAsync(request);
+                case RequestType.JoinToGame:
+                    //проверить создана ли игровая комната в переданном порту и количество человек в ней
+                    await JoinToExistingGameRoom(request);
                     break;
-                case RequestType.Ping:
-                    break;
-                case RequestType.Disks:
-                    await SendStringAsync(GetLogicalDrives(request), RequestType.Disks);
+                case RequestType.Name:
+                    //присвоить имя
+
                     break;
                 case RequestType.Disconnect:
                     Disconnect();
@@ -122,7 +152,7 @@ public class ClientHandler : IDisposable
 
     private void Disconnect()
     {
-        port.Occupied = false;
+        //port.Occupied = false;
         client.Close();
         client.Dispose();
         logger.Log(" >> Client disconnected");
