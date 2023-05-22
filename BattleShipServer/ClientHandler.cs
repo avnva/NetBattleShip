@@ -17,33 +17,6 @@ public class ClientHandler : IDisposable
 
     public event Func<TcpClient, int, Task> GetExistingPortRequested;
     public event Func<TcpClient, Task> GetNewPortRequested;
-    private async Task CreateNewGameRoom()
-    {
-        if (GetNewPortRequested != null)
-            await GetNewPortRequested.Invoke(client);
-        else
-            throw new ArgumentNullException(nameof(GetNewPortRequested));
-    }
-
-    private async Task JoinToExistingGameRoom(string PortValue)
-    {
-        int ConnectionPortValue = 0;
-        if (int.TryParse(PortValue, out int number))
-            ConnectionPortValue = number;
-        else
-            throw new ArgumentException(nameof(PortValue));
-
-        if (ConnectionPortValue != 0)
-        {
-            if (GetExistingPortRequested != null)
-                await GetExistingPortRequested.Invoke(client, ConnectionPortValue);
-            else
-                throw new ArgumentNullException(nameof(GetExistingPortRequested));
-        }
-        else
-            throw new ArgumentException();
-    }
-
     public event EventHandler Check;
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
@@ -115,9 +88,11 @@ public class ClientHandler : IDisposable
                     //проверить создана ли игровая комната в переданном порту и количество человек в ней
                     await JoinToExistingGameRoom(request);
                     break;
-                case RequestType.Name:
-                    //присвоить имя
-
+                case RequestType.Port:
+                    //отправить номер порта
+                    await SendStringAsync(GetPort(), RequestType.Port);
+                    break;
+                case RequestType.Ping:
                     break;
                 case RequestType.Disconnect:
                     Disconnect();
@@ -130,6 +105,40 @@ public class ClientHandler : IDisposable
         {
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
+    }
+
+    private string GetPort()
+    {
+        int value = port.PortValue;
+        string strPort = value.ToString();
+        return strPort;
+    }
+
+    private async Task CreateNewGameRoom()
+    {
+        if (GetNewPortRequested != null)
+            await GetNewPortRequested.Invoke(client);
+        else
+            throw new ArgumentNullException(nameof(GetNewPortRequested));
+    }
+
+    private async Task JoinToExistingGameRoom(string PortValue)
+    {
+        int ConnectionPortValue = 0;
+        if (int.TryParse(PortValue, out int number))
+            ConnectionPortValue = number;
+        else
+            throw new ArgumentException(nameof(PortValue));
+
+        if (ConnectionPortValue != 0)
+        {
+            if (GetExistingPortRequested != null)
+                await GetExistingPortRequested.Invoke(client, ConnectionPortValue);
+            else
+                throw new ArgumentNullException(nameof(GetExistingPortRequested));
+        }
+        else
+            throw new ArgumentException();
     }
 
     private async Task SendStringAsync(string response, RequestType type)

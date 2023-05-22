@@ -19,7 +19,8 @@ public class TCPServer
     public TCPServer(ILogger logger)
     {
         _ports = new Port[1000];
-        Port startPort = new Port(8888, false);
+        startPort = new Port(8888, false);
+        _ports = new Port[1000];
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         roomManager = new GameRoomManager();
         InitializePorts();
@@ -43,8 +44,6 @@ public class TCPServer
             clientHandler.Start();
         }
     }
-
-    
 
     private async Task CreateNewGame(TcpClient client)
     {
@@ -83,15 +82,10 @@ public class TCPServer
             roomManager.AddPlayerToExistsRoom(client, ConnectionPort);
     }
 
-
-
-
-
     private void AddClientToNewGameRoom(TcpClient client, Port port)
     {
         roomManager.AddPlayerToNewRoom(client, port);
     }
-
 
     private async Task SendNewPort(TcpClient client, Port port)
     {

@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-        xmlns:local="clr-namespace:BattleShip"
+        xmlns:local="clr-namespace:BattleShip" d:DataContext="{d:DesignInstance Type=local:LogInViewModel}"
         mc:Ignorable="d"
         Title="Морской бой по локальной сети" Height="368" Width="600"
         WindowStartupLocation="CenterScreen"
@@ -66,13 +66,16 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="20"/>
             </Grid.RowDefinitions>
-            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource IPHeading}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" />
+            <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource ServerIP}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" />
             <Label Style="{StaticResource LabelStyle}"  Content="{StaticResource NameHeading}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" LostFocus="tbIP_LostFocus"/>
-            <xctk:MaskedTextBox x:Name="tbIP" Mask="000/000/000/000" Width="250" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" TextAlignment="Center" LostFocus="tbIP_LostFocus" />
+            <xctk:MaskedTextBox x:Name="tbIP" Mask="000/000/000/000:00000" Width="250" Margin="20,10,20,10" FontFamily="Verdana" FontSize="16" Grid.Row="1" Grid.Column="2" TextAlignment="Center" LostFocus="tbIP_LostFocus" />
             <TextBox Style="{StaticResource TextBoxStyle}" Grid.Row="2" Grid.Column="2" x:Name="tb_playername" Margin="0,10,0,10"/>
         </Grid>
         <Grid DockPanel.Dock="Bottom" Height="155" Width="600">
-            <Button Template="{DynamicResource btLogIn}" Content="{StaticResource LogInButtonHeading}" Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+            <Button Template="{DynamicResource btLogIn}" 
+                    Content="{StaticResource LogInButtonHeading}" 
+                    Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
+                    Command="{Binding ConnectCommand}"/>
         </Grid>
     </DockPanel>
 </Window>
