@@ -68,41 +68,45 @@
                     <RowDefinition Height="49.005"/>
                 </Grid.RowDefinitions>
                 <Label Style="{StaticResource LabelStyle}"  
-                       Content="{StaticResource ServerIP}" 
-                       Visibility="{Binding ChangeVisibilityConnectToServerControls}"
-                       IsEnabled="{Binding ChangeEnabledConnectToServerControls}"
-                       Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" Margin="58,0,0,4" Width="232" />
+                       Content="{Binding LabelText}" 
+                       Visibility="{Binding ChangeVisibilityConnectControls}"
+                       IsEnabled="{Binding ChangeEnabledConnectControls}"
+                       Grid.Row="1" Grid.Column="1" 
+                       HorizontalAlignment="Left" Margin="58,0,0,4" Width="232" />
 
                 <Label Style="{StaticResource LabelStyle}"  
                        Content="{StaticResource NameHeading}"
-                       Visibility="{Binding ChangeVisibilityConnectToServerControls}"
-                       IsEnabled="{Binding ChangeEnabledConnectToServerControls}"
-                       Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left" Margin="119,44,0,26" Grid.RowSpan="3" Width="171"/>
+                       Visibility="{Binding ChangeVisibilityNameControls}"
+                       IsEnabled="{Binding ChangeEnabledNameControls}"
+                       Grid.Row="2" Grid.Column="1" 
+                       HorizontalAlignment="Left" Margin="119,1,0,49" Grid.RowSpan="2" Width="171"/>
 
-                <xctk:MaskedTextBox x:Name="tbIP" Mask="000/000/000/000:00000" Margin="20,10,20,10" 
+                <xctk:MaskedTextBox x:Name="tbIP" Mask="{Binding CurrentMaskFormat}" Margin="20,10,20,10" 
                                     FontFamily="Verdana" FontSize="16" 
                                     Grid.Row="1" Grid.Column="2" 
                                     TextAlignment="Center"
-                                    Visibility="{Binding ChangeVisibilityConnectToServerControls}"
-                                    IsEnabled="{Binding ChangeEnabledConnectToServerControls}"/>
+                                    Text="{Binding EndPoint}"
+                                    Visibility="{Binding ChangeVisibilityConnectControls}"
+                                    IsEnabled="{Binding ChangeEnabledConnectControls}"/>
 
                 <TextBox Style="{StaticResource TextBoxStyle}" 
                          Grid.Row="2" Grid.Column="2" 
                          x:Name="tb_playername" Margin="20,10,20,10"
-                         Visibility="{Binding ChangeVisibilityConnectToServerControls}"
-                         IsEnabled="{Binding ChangeEnabledConnectToServerControls}"/>
-
+                         Text="{Binding Name}"
+                         Visibility="{Binding ChangeVisibilityNameControls}"
+                         IsEnabled="{Binding ChangeEnabledNameControls}"/>
+                
                 <Button Name="CreateNewGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonCreateNewGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Command="{Binding ChangeStateToNewGameCommand}" Margin="58,0,0,0"
+                    Command="{Binding CreateNewGame}" Margin="58,0,0,0"
                     IsEnabled="{Binding ChangeEnabledChoiseControls}" 
                     Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49"/>
 
                 <Button Name="EnjoyToGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonEnjoyToGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Command="{Binding ChangeStateEnjoyToGameCommand}" Margin="20,0,0,0"
+                    Command="{Binding EnjoyToGame}" Margin="20,0,0,0"
                     IsEnabled="{Binding ChangeEnabledChoiseControls}" 
                     Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="2" Grid.Row="3" Height="49"/>
             </Grid>
@@ -117,8 +121,8 @@
                     Content="{StaticResource LogInButtonHeading}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
                     Command="{Binding ConnectCommand}"
-                    IsEnabled="{Binding ChangeEnabledConnectToServerControls}" 
-                    Visibility="{Binding ChangeVisibilityConnectToServerControls}" Grid.ColumnSpan="3" Margin="200,0,0,0"/>
+                    IsEnabled="{Binding ChangeEnabledConnectControls}" 
+                    Visibility="{Binding ChangeVisibilityConnectControls}" Grid.ColumnSpan="3" Margin="200,0,0,0"/>
             </Grid>
         </DockPanel>
     </Grid>
