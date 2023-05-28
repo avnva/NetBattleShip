@@ -19,6 +19,7 @@ public class Player
     private NetworkStream _networkStream;
     private int lastPingTime;
     private int pingTime = 5;
+    public bool IsConnect = false;
 
     public Player()
     {
@@ -32,14 +33,22 @@ public class Player
 
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
-        await GetPortAsync(IpEndPoint);
-        _playerSocket.Close();
+        //await GetPortAsync(IpEndPoint);
+        //_playerSocket.Close();
 
-        _playerSocket = new TcpClient();
-        await _playerSocket.ConnectAsync(IpEndPoint);
-        _networkStream = _playerSocket.GetStream();
-        ping = new Thread(WaitForPing);
-        ping.Start();
+        //_playerSocket = new TcpClient();
+        //await _playerSocket.ConnectAsync(IpEndPoint);
+        //_networkStream = _playerSocket.GetStream();
+        //ping = new Thread(WaitForPing);
+        //ping.Start();
+    }
+
+    public bool CheckConnection()
+    {
+        if (_playerSocket != null)
+            return _playerSocket.Connected;
+        else
+            return false;
     }
 
     private async void WaitForPing()

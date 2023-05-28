@@ -12,7 +12,6 @@ public class ViewModelBase : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler PropertyChanged;
     public event EventHandler<MessageBoxEventArgs> MessageBoxRequest;
-
     public Action Close { get; set; }
     protected void MessageBox_Show(Action<MessageBoxResult> resultAction, string messageBoxText,
         string caption = "", MessageBoxButton button = MessageBoxButton.OK,

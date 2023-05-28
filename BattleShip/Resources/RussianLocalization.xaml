@@ -4,4 +4,6 @@
     <system:String x:Key="ServerIP">Введите IP адрес сервера:</system:String>
     <system:String x:Key="NameHeading">Введите Ваше имя:</system:String>
     <system:String x:Key="LogInButtonHeading">Подключиться</system:String>
+    <system:String x:Key="LogInButtonCreateNewGame">Создать новую игру</system:String>
+    <system:String x:Key="LogInButtonEnjoyToGame">Подключиться к игре</system:String>
 </ResourceDictionary>
