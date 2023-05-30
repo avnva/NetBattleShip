@@ -9,18 +9,21 @@ namespace BattleShip;
 
 public class RequestParser
 {
-    private byte directoryTreeRequest = 1;
-    private byte fileContentsRequest = 2;
-    private byte fileNameRequest = 3;
     private byte _createNewGameRequest = 0;
+    private byte _connectToExistingGameRoom = 1;
     private byte _getNewPortRequest = 2;
+    private byte _checkOnline = 3;
 
     public string Parse(string request)
     {
         if (request == @"Create new game")
             return Encoding.UTF8.GetString(new[] { _createNewGameRequest }) + request;
-        if (request == @"Get new port")
+        if (request == @"Get game room")
             return Encoding.UTF8.GetString(new[] { _getNewPortRequest }) + request;
+        if(request == @"Connect to existing game room")
+            return Encoding.UTF8.GetString(new[] { _connectToExistingGameRoom }) + request;
+        if (request == @"Check online")
+            return Encoding.UTF8.GetString(new[] { _checkOnline }) + request;
         else
             return null;
 

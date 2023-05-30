@@ -83,4 +83,15 @@ public class GameRoomManager
         _gameRooms.Add(gameRoom);
         return gameRoom;
     }
+    public bool CheckPlayersConnection(Port port)
+    {
+        foreach(GameRoom room in _gameRooms)
+        {
+            if (room.Port == port)
+            {
+                return room.IsFull();
+            }
+        }
+        return false;
+    }
 }

@@ -57,8 +57,8 @@
             <Grid DockPanel.Dock="Top" Height="174" Width="600" >
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="10"/>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="71*" />
+                    <ColumnDefinition Width="74*" />
                     <ColumnDefinition Width="10"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
@@ -71,39 +71,52 @@
                        Content="{Binding CurrentLabelText}" 
                        Visibility="{Binding ChangeVisibilityConnectControls}"
                        Grid.Row="1" Grid.Column="1" 
-                       HorizontalAlignment="Left" Margin="58,0,0,4" Width="232" />
+                       HorizontalContentAlignment="Right"
+                       HorizontalAlignment="Center" Margin="0,2,0,2" Width="284" />
 
                 <Label Style="{StaticResource LabelStyle}"  
                        Content="{StaticResource NameHeading}"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Right"
                        Visibility="{Binding ChangeVisibilityNameControls}"
                        Grid.Row="2" Grid.Column="1" 
-                       HorizontalAlignment="Left" Margin="119,1,0,49" Grid.RowSpan="2" Width="171"/>
+                       Margin="0,0,0,1" Width="284"/>
 
-                <xctk:MaskedTextBox x:Name="tbIP" Mask="{Binding CurrentMaskFormat}" Margin="20,10,20,10" 
+                <xctk:MaskedTextBox x:Name="tbIP" Mask="{Binding CurrentMaskFormat}" 
                                     FontFamily="Verdana" FontSize="16" 
                                     Grid.Row="1" Grid.Column="2" 
                                     TextAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="5,10,17,10"
                                     Text="{Binding CurrentBindingMaskedTextBox}"
                                     Visibility="{Binding ChangeVisibilityConnectControls}"
-                                    IsEnabled="{Binding IsEnabledMaskedTbControls}"/>
+                                    IsEnabled="{Binding IsEnabledMaskedTbControls}" Width="250" Height="34"/>
 
                 <TextBox Style="{StaticResource TextBoxStyle}" 
                          Grid.Row="2" Grid.Column="2" 
-                         x:Name="tb_playername" Margin="20,10,20,10"
+                         x:Name="tb_playername" Margin="5,10,17,10"
                          Text="{Binding Name}"
                          Visibility="{Binding ChangeVisibilityNameControls}"/>
-                
+
                 <Button Name="CreateNewGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonCreateNewGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
                     Command="{Binding CreateNewGame}" Margin="58,0,0,0"
-                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49"/>
+                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49" Width="200"/>
 
                 <Button Name="EnjoyToGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonEnjoyToGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Command="{Binding EnjoyToGame}" Margin="20,0,0,0"
-                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="2" Grid.Row="3" Height="49"/>
+                    Command="{Binding ConnectToExistingGameRoom}" Margin="35,0,0,0"
+                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="2" Grid.Row="3" Height="49" Width="200"/>
+                <Label Style="{StaticResource LabelStyle}"
+                       FontWeight="Medium"
+                       Content="{Binding OpponentConnectTextChange}"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       Visibility="{Binding ChangeVisibilityConnectControls}"
+                       Width="580" Grid.ColumnSpan="2" Grid.Column="1" Grid.Row="3"/>
             </Grid>
             <Grid DockPanel.Dock="Bottom" Height="178" Width="600">
                 <Grid.ColumnDefinitions>
@@ -116,7 +129,10 @@
                     Content="{StaticResource LogInButtonHeading}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
                     Command="{Binding CurrentCommandConnectButton}"
-                    Visibility="{Binding ChangeVisibilityConnectControls}" Grid.ColumnSpan="3" Margin="200,0,0,0"/>
+                    Visibility="{Binding ChangeVisibilityConnectControls}" 
+                    Grid.ColumnSpan="3" Margin="200,0,0,0" 
+                    RenderTransformOrigin="0.502,0.104" Height="45"/>
+
             </Grid>
         </DockPanel>
     </Grid>

@@ -47,7 +47,6 @@ public class TCPServer
 
     private async Task CreateNewGame(TcpClient client)
     {
-
         Port newPort = FindFreePort();
         _logger.Log($" >> Found new port: {newPort.PortValue}");
         
@@ -58,6 +57,7 @@ public class TCPServer
         _logger.Log($" >> Client connected on port {newPort.PortValue}");
 
         ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
+        clientHandler.CheckOnline += CheckOnline;
         clientHandler.Start();
 
         AddClientToNewGameRoom(cl, newPort);
@@ -69,6 +69,10 @@ public class TCPServer
         await CreateNewGame(client);
     }
 
+    private bool CheckOnline(Port port) 
+    { 
+        return roomManager.CheckPlayersConnection(port);
+    }
     private async Task HandleJoinToExistingGameRoom(TcpClient client, int portValue)
     {
         Port ConnectionPort = null;

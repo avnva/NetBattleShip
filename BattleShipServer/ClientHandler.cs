@@ -19,7 +19,8 @@ public class ClientHandler : IDisposable
 
     public event Func<TcpClient, int, Task> GetExistingPortRequested;
     public event Func<TcpClient, Task> GetNewPortRequested;
-    public event EventHandler Check;
+    //public event Func<TcpClient, Task> CheckOnlineOpponent;
+    public event Func<Port, bool> CheckOnline;
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
     {
@@ -85,7 +86,7 @@ public class ClientHandler : IDisposable
             {
                 case RequestType.CreateNewGame:
                     //выдать игровую комнату и новый порт
-                    await CreateNewGameRoom();
+                    
                     
                     break;
                 case RequestType.JoinToGame:
@@ -96,6 +97,9 @@ public class ClientHandler : IDisposable
                     //отправить номер порта
                     await CreateNewGameRoom();
                     _isActiv = false;
+                    break;
+                case RequestType.Online:
+                    CheckOpponentOnline();
                     break;
                 case RequestType.Ping:
                     break;
@@ -111,6 +115,15 @@ public class ClientHandler : IDisposable
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
     }
+
+    private bool CheckOpponentOnline()
+    {
+        if (CheckOnline != null)
+             return CheckOnline.Invoke(port);
+        else
+            throw new ArgumentNullException(nameof(CheckOnline));
+    }
+
 
     private string GetPort()
     {

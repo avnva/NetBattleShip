@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 
 namespace BattleShip;
@@ -21,11 +22,15 @@ public class Player
     private NetworkStream _networkStream;
     private int lastPingTime;
     private int pingTime = 5;
-    public bool IsConnect = false;
+    private string _checkOnline = "Check online";
+    public bool IsOpponentConnected = false;
+    public event EventHandler CheckOpponentOnlineEvent;
+    private RequestParser _requestParser;
 
     public Player()
     {
         lastPingTime = DateTime.Now.Second;
+        _requestParser = new RequestParser();
     }
 
     public async Task ConnectAsync(string endPoint)
@@ -35,6 +40,8 @@ public class Player
 
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
+        //ping = new Thread(WaitForPing);
+        //ping.Start();
         //await GetPortAsync(IpEndPoint);
         //_playerSocket.Close();
 
@@ -60,15 +67,41 @@ public class Player
         _networkStream = _playerSocket.GetStream();
         //ping = new Thread(WaitForPing);
         //ping.Start();
+        StartCheckingOpponent();
     }
 
-    //private async Task GetPortAsync(IPEndPoint ipEndPoint)
-    //{
-    //    Response response = await GetResponseAsync("");
-    //    int.TryParse(response.Contents, out var port);
-    //    ipEndPoint.Port = port;
-    //}
+    private System.Timers.Timer _timer;
 
+    public void StartCheckingOpponent()
+    {
+        // Создаем таймер, который будет вызывать метод CheckOpponent каждые 5 секунд
+        _timer = new System.Timers.Timer();
+        _timer.Interval = 5000;
+        _timer.Elapsed += CheckOnline;
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+    }
+
+    public void StopCheckingOpponent()
+    {
+        // Останавливаем таймер
+        _timer?.Dispose();
+    }
+    public void CheckOnline(object sender, EventArgs e)
+    {
+        CheckOpponentOnline();
+        OnOpponentOnline();
+    }
+    private void OnOpponentOnline()
+    {
+        CheckOpponentOnlineEvent?.Invoke(null, EventArgs.Empty);
+    }
+    public async Task<bool> CheckOpponentOnline()
+    {
+        string request = _requestParser.Parse(_checkOnline);
+        Response response = await SendRequestAsync(request);
+        return response.Flag;
+    }
     public bool CheckConnection()
     {
         if (_playerSocket != null)
@@ -98,15 +131,12 @@ public class Player
             await _networkStream.WriteAsync(request);
             return true;
         }
-        catch (Exception ex)
+        catch
         {
             CloseSocket();
             return false;
         }
     }
-
-
-
     public async Task<Response> SendRequestAsync(string message)
     {
         byte[] messageBytes = Encoding.UTF8.GetBytes(message);
@@ -124,50 +154,27 @@ public class Player
         int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length);;
         switch ((RequestType)buffer[0])
         {
-            case RequestType.CreateNewGame:
-                return new Response(RequestType.CreateNewGame,
-                    await GetStringResponseAsync(buffer, bytesRead));
+            //case RequestType.CreateNewGame:
+
             //case RequestType.JoinToGame:
-            //    return new Response(RequestType.JoinToGame,
-            //        await SaveFileAsync(buffer, bytesRead, message));
-            //case RequestType.Exception:
-            //    return new Response(RequestType.Exception,
-            //        await GetStringResponseAsync(buffer, bytesRead));
+            case RequestType.Online:
+                return new Response(RequestType.Online, 
+                    await GetBoolResponseAsync(buffer));
+ 
             case RequestType.Port:
                 return new Response(RequestType.Port,
                     await GetStringResponseAsync(buffer, bytesRead));
-            //case RequestType.Disks:
-            //    return new Response(RequestType.Disks,
-            //        await GetStringResponseAsync(buffer, bytesRead));
             default:
                 throw new ApplicationException("Invalid signature!");
         }
     }
-
-    private async Task<string> SaveFileAsync(byte[] buffer, int bytesRead, string request)
+    private async Task<bool> GetBoolResponseAsync(byte[] buffer)
     {
-        byte[] responseBuffer = new byte[8 * 1024];
-        Array.Copy(buffer, 1, responseBuffer, 0, buffer.Length - 1);
-        string path = $"{Environment.GetFolderPath(Environment.SpecialFolder.Desktop)}\\{Path.GetFileName(request)}";
-        FileStream fileStream =
-            new FileStream(path, FileMode.Create);
-
-        await fileStream.WriteAsync(responseBuffer, 0, bytesRead - 1);
-        await fileStream.FlushAsync();
-
-        while (bytesRead != 0)
-        {
-            if (_networkStream.DataAvailable == false)
-                break;
-            bytesRead = await _networkStream.ReadAsync(responseBuffer, 0, responseBuffer.Length);
-
-            await fileStream.WriteAsync(responseBuffer, 0, bytesRead);
-            await fileStream.FlushAsync();
-        }
-
-        fileStream.Close();
-        return $"File saved in {path}";
+        buffer = buffer.Skip(1).ToArray();
+        bool response = BitConverter.ToBoolean(buffer, 0);
+        return response;
     }
+
 
     private async Task<string> GetStringResponseAsync(byte[] buffer, int bytesRead)
     {
@@ -191,6 +198,7 @@ public class Player
     {
         await _networkStream.WriteAsync(new[] { (byte)RequestType.Disconnect }, 0, 1);
         await _networkStream.FlushAsync();
+        StopCheckingOpponent();
         CloseSocket();
     }
 
@@ -198,6 +206,7 @@ public class Player
     {
         _playerSocket.Close();
         Disconnected?.Invoke();
+        StopCheckingOpponent();
     }
 
     public Action Disconnected { get; set; }
