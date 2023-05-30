@@ -12,17 +12,22 @@ public class RequestParser
     private byte directoryTreeRequest = 1;
     private byte fileContentsRequest = 2;
     private byte fileNameRequest = 3;
-    private byte disksRequest = 7;
+    private byte _createNewGameRequest = 0;
+    private byte _getNewPortRequest = 2;
 
     public string Parse(string request)
     {
-        if (request == @"\")
-            return Encoding.UTF8.GetString(new[] { disksRequest }) + request;
-
-        FileAttributes attributes = File.GetAttributes(request);
-        if ((attributes & FileAttributes.Directory) == FileAttributes.Directory)
-            return Encoding.UTF8.GetString(new[] { directoryTreeRequest }) + request;
+        if (request == @"Create new game")
+            return Encoding.UTF8.GetString(new[] { _createNewGameRequest }) + request;
+        if (request == @"Get new port")
+            return Encoding.UTF8.GetString(new[] { _getNewPortRequest }) + request;
         else
-            return Encoding.UTF8.GetString(new[] { fileContentsRequest }) + request;
+            return null;
+
+        //FileAttributes attributes = File.GetAttributes(request);
+        //if ((attributes & FileAttributes.Directory) == FileAttributes.Directory)
+        //    return Encoding.UTF8.GetString(new[] { directoryTreeRequest }) + request;
+        //else
+        //    return Encoding.UTF8.GetString(new[] { fileContentsRequest }) + request;
     }
 }

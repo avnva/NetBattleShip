@@ -68,16 +68,14 @@
                     <RowDefinition Height="49.005"/>
                 </Grid.RowDefinitions>
                 <Label Style="{StaticResource LabelStyle}"  
-                       Content="{Binding LabelText}" 
+                       Content="{Binding CurrentLabelText}" 
                        Visibility="{Binding ChangeVisibilityConnectControls}"
-                       IsEnabled="{Binding ChangeEnabledConnectControls}"
                        Grid.Row="1" Grid.Column="1" 
                        HorizontalAlignment="Left" Margin="58,0,0,4" Width="232" />
 
                 <Label Style="{StaticResource LabelStyle}"  
                        Content="{StaticResource NameHeading}"
                        Visibility="{Binding ChangeVisibilityNameControls}"
-                       IsEnabled="{Binding ChangeEnabledNameControls}"
                        Grid.Row="2" Grid.Column="1" 
                        HorizontalAlignment="Left" Margin="119,1,0,49" Grid.RowSpan="2" Width="171"/>
 
@@ -85,29 +83,26 @@
                                     FontFamily="Verdana" FontSize="16" 
                                     Grid.Row="1" Grid.Column="2" 
                                     TextAlignment="Center"
-                                    Text="{Binding EndPoint}"
+                                    Text="{Binding CurrentBindingMaskedTextBox}"
                                     Visibility="{Binding ChangeVisibilityConnectControls}"
-                                    IsEnabled="{Binding ChangeEnabledConnectControls}"/>
+                                    IsEnabled="{Binding IsEnabledMaskedTbControls}"/>
 
                 <TextBox Style="{StaticResource TextBoxStyle}" 
                          Grid.Row="2" Grid.Column="2" 
                          x:Name="tb_playername" Margin="20,10,20,10"
                          Text="{Binding Name}"
-                         Visibility="{Binding ChangeVisibilityNameControls}"
-                         IsEnabled="{Binding ChangeEnabledNameControls}"/>
+                         Visibility="{Binding ChangeVisibilityNameControls}"/>
                 
                 <Button Name="CreateNewGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonCreateNewGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
                     Command="{Binding CreateNewGame}" Margin="58,0,0,0"
-                    IsEnabled="{Binding ChangeEnabledChoiseControls}" 
                     Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49"/>
 
                 <Button Name="EnjoyToGame" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonEnjoyToGame}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
                     Command="{Binding EnjoyToGame}" Margin="20,0,0,0"
-                    IsEnabled="{Binding ChangeEnabledChoiseControls}" 
                     Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="2" Grid.Row="3" Height="49"/>
             </Grid>
             <Grid DockPanel.Dock="Bottom" Height="178" Width="600">
@@ -120,8 +115,7 @@
                 <Button Name="ConnectToServer" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonHeading}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
-                    Command="{Binding ConnectCommand}"
-                    IsEnabled="{Binding ChangeEnabledConnectControls}" 
+                    Command="{Binding CurrentCommandConnectButton}"
                     Visibility="{Binding ChangeVisibilityConnectControls}" Grid.ColumnSpan="3" Margin="200,0,0,0"/>
             </Grid>
         </DockPanel>

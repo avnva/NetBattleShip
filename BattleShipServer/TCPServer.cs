@@ -66,7 +66,6 @@ public class TCPServer
 
     private async Task HandleCreateNewGameRoom(TcpClient client)
     {
-        
         await CreateNewGame(client);
     }
 

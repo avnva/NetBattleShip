@@ -1,9 +1,11 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +44,30 @@ public class Player
         //ping = new Thread(WaitForPing);
         //ping.Start();
     }
+    public int GetPort(IPEndPoint ip)
+    {
+        return ip.Port;
+    }
+
+    public async Task ConnectToNewPort(IPEndPoint ip, Response response)
+    {
+        int.TryParse(response.Contents, out var port);
+        ip.Port = port;
+        _playerSocket.Close();
+
+        _playerSocket = new TcpClient();
+        await _playerSocket.ConnectAsync(IpEndPoint);
+        _networkStream = _playerSocket.GetStream();
+        //ping = new Thread(WaitForPing);
+        //ping.Start();
+    }
+
+    //private async Task GetPortAsync(IPEndPoint ipEndPoint)
+    //{
+    //    Response response = await GetResponseAsync("");
+    //    int.TryParse(response.Contents, out var port);
+    //    ipEndPoint.Port = port;
+    //}
 
     public bool CheckConnection()
     {
@@ -79,12 +105,7 @@ public class Player
         }
     }
 
-    private async Task GetPortAsync(IPEndPoint ipEndPoint)
-    {
-        Response response = await GetResponseAsync("");
-        int.TryParse(response.Contents, out var port);
-        ipEndPoint.Port = port;
-    }
+
 
     public async Task<Response> SendRequestAsync(string message)
     {
@@ -112,9 +133,9 @@ public class Player
             //case RequestType.Exception:
             //    return new Response(RequestType.Exception,
             //        await GetStringResponseAsync(buffer, bytesRead));
-            //case RequestType.Port:
-            //    return new Response(RequestType.Port,
-            //        await GetStringResponseAsync(buffer, bytesRead));
+            case RequestType.Port:
+                return new Response(RequestType.Port,
+                    await GetStringResponseAsync(buffer, bytesRead));
             //case RequestType.Disks:
             //    return new Response(RequestType.Disks,
             //        await GetStringResponseAsync(buffer, bytesRead));

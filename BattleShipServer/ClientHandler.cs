@@ -13,6 +13,8 @@ public class ClientHandler : IDisposable
     private ILogger logger;
     private Port port;
     private NetworkStream networkStream;
+    Thread thread;
+    private bool _isActiv;
     public GameRoom GameRoom { get; private set; }
 
     public event Func<TcpClient, int, Task> GetExistingPortRequested;
@@ -31,7 +33,8 @@ public class ClientHandler : IDisposable
 
     public void Start()
     {
-        Thread thread = new Thread(Listen);
+        _isActiv = true;
+        thread = new Thread(Listen);
         thread.Start();
     }
 
@@ -39,7 +42,7 @@ public class ClientHandler : IDisposable
     {
         try
         {
-            while (true)
+            while (_isActiv)
             {
                 byte[] buffer = new byte[1024 * 8];
                 StringBuilder request = new StringBuilder();
@@ -83,6 +86,7 @@ public class ClientHandler : IDisposable
                 case RequestType.CreateNewGame:
                     //выдать игровую комнату и новый порт
                     await CreateNewGameRoom();
+                    
                     break;
                 case RequestType.JoinToGame:
                     //проверить создана ли игровая комната в переданном порту и количество человек в ней
@@ -90,7 +94,8 @@ public class ClientHandler : IDisposable
                     break;
                 case RequestType.Port:
                     //отправить номер порта
-                    await SendStringAsync(GetPort(), RequestType.Port);
+                    await CreateNewGameRoom();
+                    _isActiv = false;
                     break;
                 case RequestType.Ping:
                     break;

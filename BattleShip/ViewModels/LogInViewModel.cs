@@ -27,31 +27,42 @@ public class LogInViewModel:ViewModelBase
     private bool _connected;
     private string _enterEndPoint;
     private IPEndPoint _endPoint;
-    private string clientLog;
+    private string _name;
+    private string _gameRoomNumber;
+
+    private RequestParser _requestParser;
+
     private Visibility _visibilityConnectControls;
     private Visibility _visibilityChoiseControls;
     private Visibility _visibilityNameControls;
-    private bool _isEnabledConnectControls;
-    private bool _isEnabledChoiseControls;
-    private bool _isEnabledNameControls;
-    private string _name;
+
+    private bool _isEnabledMaskedTextBox;
+
+    
     private string _IPandPortMask = "000/000/000/000:00000";
     private string _roomNumberMask = "00000";
+    private string _createNewGameRequest = "Create new game";
+    private string _getNewPort = "Get new port";
 
 
     public LogInViewModel()
-    {
-        EndPoint = "127.000.000.001:8888";
+    { 
         socket = new Player();
+        _requestParser = new RequestParser();
+        _connected = false;
+
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
-        ChangeEnabledConnectControls = true;
-        ChangeEnabledChoiseControls = false;
-        ChangeEnabledNameControls = true;
+        ChangeVisibilityNameControls = Visibility.Visible;
+
+        _isEnabledMaskedTextBox = true;
+
         CurrentCommandConnectButton = ConnectCommand;
         CurrentMaskFormat = _IPandPortMask;
-        _connected = false;
-        LabelText = "Введите IP адрес сервера:";
+        CurrentBindingMaskedTextBox = EndPoint;
+        CurrentLabelText = "Введите IP адрес сервера:";
+
+        EndPoint = "127.000.000.001:8888";
     }
     public string Name
     {
@@ -60,6 +71,16 @@ public class LogInViewModel:ViewModelBase
         {
             _name = value;
             OnPropertyChange(nameof(Name));
+        }
+    }
+
+    public string GameRoomNumber
+    {
+        get => _gameRoomNumber;
+        set
+        {
+            _gameRoomNumber = value;
+            OnPropertyChange(nameof(GameRoomNumber));
         }
     }
 
@@ -87,7 +108,7 @@ public class LogInViewModel:ViewModelBase
         {
             return _createNewGame ?? new RelayCommand(
                 _execute => {
-                    ChangeContent(FormState.CreateNewGame);
+                    ConnectToNewPort();
                 },
                 _canExecute => true
             );
@@ -110,6 +131,7 @@ public class LogInViewModel:ViewModelBase
 
     private RelayCommand _start;
 
+    //поменять
     public RelayCommand StartCommand
     {
         get
@@ -125,74 +147,7 @@ public class LogInViewModel:ViewModelBase
         }
     }
 
-    public Visibility ChangeVisibilityChoiseControls
-    {
-        get { return _visibilityChoiseControls; }
-        set
-        {
-            _visibilityChoiseControls = value;
-            OnPropertyChange(nameof(ChangeVisibilityChoiseControls));
-        }
-    }
-
-    public Visibility ChangeVisibilityConnectControls
-    {
-        get { return _visibilityConnectControls; }
-        set
-        {
-            _visibilityConnectControls = value;
-            OnPropertyChange(nameof(ChangeVisibilityConnectControls));
-        }
-    }
-
-
-    public Visibility ChangeVisibilityNameControls
-    {
-        get { return _visibilityNameControls; }
-        set
-        {
-            _visibilityNameControls = value;
-            OnPropertyChange(nameof(ChangeVisibilityNameControls));
-        }
-    }
-    //public Visibility ChangeVisibilityEnjoyToGameControl
-    //{
-    //    get { return _visibilityEnjoyToGameControls; }
-    //    set
-    //    {
-    //        _visibilityEnjoyToGameControls = value;
-    //        OnPropertyChange(nameof(ChangeVisibilityEnjoyToGameControl));
-    //    }
-    //}
-
-    public bool ChangeEnabledChoiseControls
-    {
-        get { return _isEnabledChoiseControls; }
-        set
-        {
-            _isEnabledChoiseControls = value;
-            OnPropertyChange(nameof(ChangeEnabledChoiseControls));
-        }
-    }
-
-    public bool ChangeEnabledConnectControls
-    {
-        get { return _isEnabledConnectControls; }
-        set
-        {
-            _isEnabledConnectControls = value;
-            OnPropertyChange(nameof(ChangeEnabledConnectControls));
-        }
-    }
-    public bool ChangeEnabledNameControls
-    {
-        get { return _isEnabledNameControls; }
-        set
-        {
-            _isEnabledNameControls = value;
-            OnPropertyChange(nameof(ChangeEnabledNameControls));
-        }
-    }
+    
 
     private ICommand _currentCommandConnectButton;
     public ICommand CurrentCommandConnectButton
@@ -216,19 +171,78 @@ public class LogInViewModel:ViewModelBase
         }
     }
 
-    private string _labelText;
-    public string LabelText
+    private string _currentlabelText;
+    public string CurrentLabelText
     {
-        get { return _labelText; }
+        get { return _currentlabelText; }
         set
         {
-            _labelText = value;
-            OnPropertyChange(nameof(LabelText));
+            _currentlabelText = value;
+            OnPropertyChange(nameof(CurrentLabelText));
+        }
+    }
+
+    private string _currentBinding;
+
+    public string CurrentBindingMaskedTextBox
+    {
+        get { return _currentBinding; }
+        set
+        {
+            _currentBinding = value;
+            OnPropertyChange(nameof(CurrentBindingMaskedTextBox));
+        }
+    }
+
+    private async Task ConnectToNewPort()
+    {
+        try
+        {
+            string request = _requestParser.Parse(_getNewPort);
+            Response newPort = await socket.SendRequestAsync(request);
+            await socket.ConnectToNewPort(_endPoint, newPort);
+            _endPoint = socket.IpEndPoint;
+            _gameRoomNumber = GetGameRoomNumber();
+            ChangeContent(FormState.CreateNewGame);
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task SendRequest(string request)
+    {
+        try
+        {
+            request = _requestParser.Parse(request);
+            Response response = await socket.SendRequestAsync(request);
+
+            switch (response.Type)
+            {
+                case RequestType.CreateNewGame:
+                    
+                    break;
+                //case RequestType.Disks:
+                //    ClientLog += $"Client received: {response.Contents}\n";
+                //    UpdateServerDirectoryContents(response.Contents.Split('|'));
+                //    break;
+                //case RequestType.FileContents:
+                //    ClientLog += $"Client received: {response.Contents}\n";
+                //    break;
+                default:
+                    
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
     private void ChangeContent(FormState state)
     {
-        if (!CheckConnection())
+        if (CheckConnection())
         {
             switch (state)
             {
@@ -250,6 +264,10 @@ public class LogInViewModel:ViewModelBase
             }
         }
     }
+    private string GetGameRoomNumber()
+    {
+        return socket.GetPort(_endPoint).ToString();
+    }
     private bool CheckConnection()
     {
         return _connected = socket.CheckConnection();
@@ -261,9 +279,6 @@ public class LogInViewModel:ViewModelBase
         ChangeVisibilityChoiseControls = Visibility.Visible;
         ChangeVisibilityConnectControls = Visibility.Collapsed;
         ChangeVisibilityNameControls = Visibility.Collapsed;
-        ChangeEnabledChoiseControls = true;
-        ChangeEnabledConnectControls = false;
-        ChangeEnabledNameControls = false;
     }
 
     private void CreateNewGameContent()
@@ -271,11 +286,13 @@ public class LogInViewModel:ViewModelBase
         // Создание содержимого формы для состояния создания новой игры
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
-        ChangeEnabledChoiseControls = false;
-        ChangeEnabledConnectControls = true;
-        CurrentCommandConnectButton = StartCommand;
+        ChangeVisibilityNameControls = Visibility.Collapsed;
+        IsEnabledMaskedTbControls = false;
+
+        CurrentCommandConnectButton = CreateNewGame;
         CurrentMaskFormat = _roomNumberMask;
-        LabelText = "Номер вашей комнаты:";
+        CurrentBindingMaskedTextBox = GameRoomNumber;
+        CurrentLabelText = "Номер вашей комнаты:";
     }
 
     private void EnjoyToGameContent()
@@ -283,11 +300,11 @@ public class LogInViewModel:ViewModelBase
         // Создание содержимого формы для состояния подключения к существующей игре
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
-        ChangeEnabledChoiseControls = false;
-        ChangeEnabledConnectControls = true;
+        //ChangeEnabledChoiseControls = false;
+        //ChangeEnabledConnectControls = true;
         CurrentCommandConnectButton = StartCommand;
         CurrentMaskFormat = _roomNumberMask;
-        LabelText = "Введите номер комнаты:";
+        CurrentLabelText = "Введите номер комнаты:";
 
     }
     private void StartGame()
@@ -309,16 +326,6 @@ public class LogInViewModel:ViewModelBase
         }
     }
 
-    public string ClientLog
-    {
-        get { return clientLog; }
-        set
-        {
-            clientLog = value;
-            OnPropertyChange(nameof(clientLog));
-        }
-    }
-
     public string EndPoint
     {
         get { return _enterEndPoint; }
@@ -326,6 +333,46 @@ public class LogInViewModel:ViewModelBase
         {
             _enterEndPoint = value;
             OnPropertyChange(nameof(EndPoint));
+        }
+    }
+
+    public Visibility ChangeVisibilityChoiseControls
+    {
+        get { return _visibilityChoiseControls; }
+        set
+        {
+            _visibilityChoiseControls = value;
+            OnPropertyChange(nameof(ChangeVisibilityChoiseControls));
+        }
+    }
+
+    public Visibility ChangeVisibilityConnectControls
+    {
+        get { return _visibilityConnectControls; }
+        set
+        {
+            _visibilityConnectControls = value;
+            OnPropertyChange(nameof(ChangeVisibilityConnectControls));
+        }
+    }
+
+    public Visibility ChangeVisibilityNameControls
+    {
+        get { return _visibilityNameControls; }
+        set
+        {
+            _visibilityNameControls = value;
+            OnPropertyChange(nameof(ChangeVisibilityNameControls));
+        }
+    }
+
+    public bool IsEnabledMaskedTbControls
+    {
+        get { return _isEnabledMaskedTextBox; }
+        set
+        {
+            _isEnabledMaskedTextBox = value;
+            OnPropertyChange(nameof(IsEnabledMaskedTbControls));
         }
     }
 
