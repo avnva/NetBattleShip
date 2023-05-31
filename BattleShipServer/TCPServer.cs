@@ -49,8 +49,16 @@ public class TCPServer
     {
         Port newPort = FindFreePort();
         _logger.Log($" >> Found new port: {newPort.PortValue}");
-        
-        await SendNewPort(client, newPort);
+        TcpClient newClient = await RedirectingToNewPort(client, newPort, RequestType.Port);
+
+        AddClientToNewGameRoom(newClient, newPort);
+        _logger.Log($" >> Client connected to new game room");
+    }
+
+    private async Task<TcpClient> RedirectingToNewPort(TcpClient client, Port newPort, RequestType type)
+    {
+
+        await SendNewPort(client, newPort, type);
         _logger.Log($" >> Waiting for connection");
 
         TcpClient cl = await WaitForConnection(newPort);
@@ -59,9 +67,7 @@ public class TCPServer
         ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
         clientHandler.CheckOnline += CheckOnline;
         clientHandler.Start();
-
-        AddClientToNewGameRoom(cl, newPort);
-        _logger.Log($" >> Client connected to new game room");
+        return cl;
     }
 
     private async Task HandleCreateNewGameRoom(TcpClient client)
@@ -69,20 +75,48 @@ public class TCPServer
         await CreateNewGame(client);
     }
 
-    private bool CheckOnline(Port port) 
-    { 
-        return roomManager.CheckPlayersConnection(port);
+    private async Task CheckOnline(Port port, TcpClient client) 
+    {
+        bool opponentConnect = roomManager.CheckPlayersConnection(port);
+        await SendMessage(client, opponentConnect, RequestType.Online);
+        if (opponentConnect)
+             _logger.Log($" >> Server sent: opponent is found");
+        else
+            _logger.Log($" >> Server sent: opponent not found");
+
     }
     private async Task HandleJoinToExistingGameRoom(TcpClient client, int portValue)
     {
         Port ConnectionPort = null;
         foreach (Port port in _ports)
             if (port.PortValue == portValue || port.Occupied == true)
+            {
                 ConnectionPort = port;
+                break;
+            }
+
         if (ConnectionPort == null)
             throw new ArgumentNullException("Такой порт не существует");
         else
-            roomManager.AddPlayerToExistsRoom(client, ConnectionPort);
+        {
+            TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.JoinToGame);
+            roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
+            _logger.Log($" >> Client connected to existing game room");
+            await SendMessage(newClient, true, RequestType.JoinToGame);
+            _logger.Log($" >> Server sent: connection successful");
+        }
+    }
+
+    private async Task SendMessage(TcpClient client, bool value, RequestType type)
+    {
+        NetworkStream networkStream = client.GetStream();
+        byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
+
+        responseBytes[0] = (byte)type;
+        Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
+
+        await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+        await networkStream.FlushAsync();
     }
 
     private void AddClientToNewGameRoom(TcpClient client, Port port)
@@ -90,12 +124,12 @@ public class TCPServer
         roomManager.AddPlayerToNewRoom(client, port);
     }
 
-    private async Task SendNewPort(TcpClient client, Port port)
+    private async Task SendNewPort(TcpClient client, Port port, RequestType type)
     {
         NetworkStream networkStream = client.GetStream();
         byte[] bytes = Encoding.UTF8.GetBytes($"{port.PortValue}"), responseBytes = new byte[bytes.Length + 1];
 
-        responseBytes[0] = (byte)RequestType.Port;
+        responseBytes[0] = (byte)type;
         Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
 
         await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
@@ -112,7 +146,7 @@ public class TCPServer
         TcpClient client = await listener.AcceptTcpClientAsync();
         listener.Stop();
 
-        _logger.Log($" >> Listener on port {port.PortValue} started!");
+        _logger.Log($" >> Socket on port {port.PortValue} started!");
         return client;
     }
 

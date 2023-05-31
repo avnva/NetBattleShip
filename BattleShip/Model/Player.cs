@@ -27,11 +27,13 @@ public class Player
     public event EventHandler CheckOpponentOnlineEvent;
     private RequestParser _requestParser;
 
+
     public Player()
     {
         lastPingTime = DateTime.Now.Second;
         _requestParser = new RequestParser();
     }
+    public string Name { get; set; }
 
     public async Task ConnectAsync(string endPoint)
     {
@@ -40,16 +42,9 @@ public class Player
 
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
-        //ping = new Thread(WaitForPing);
-        //ping.Start();
-        //await GetPortAsync(IpEndPoint);
-        //_playerSocket.Close();
 
-        //_playerSocket = new TcpClient();
-        //await _playerSocket.ConnectAsync(IpEndPoint);
-        //_networkStream = _playerSocket.GetStream();
-        //ping = new Thread(WaitForPing);
-        //ping.Start();
+        ping = new Thread(WaitForPing);
+        ping.Start();
     }
     public int GetPort(IPEndPoint ip)
     {
@@ -65,43 +60,47 @@ public class Player
         _playerSocket = new TcpClient();
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
-        //ping = new Thread(WaitForPing);
-        //ping.Start();
-        StartCheckingOpponent();
+
+        ping = new Thread(WaitForPing);
+        ping.Start();
+
     }
 
     private System.Timers.Timer _timer;
 
     public void StartCheckingOpponent()
     {
-        // Создаем таймер, который будет вызывать метод CheckOpponent каждые 5 секунд
+        // Таймер, который будет проверять каждые 5 секунд онлайн ли оппонент 
         _timer = new System.Timers.Timer();
-        _timer.Interval = 5000;
+        _timer.Interval = 20000;
         _timer.Elapsed += CheckOnline;
         _timer.AutoReset = true;
         _timer.Enabled = true;
     }
-
-    public void StopCheckingOpponent()
-    {
-        // Останавливаем таймер
-        _timer?.Dispose();
-    }
-    public void CheckOnline(object sender, EventArgs e)
+    private void CheckOnline(object sender, EventArgs e)
     {
         CheckOpponentOnline();
         OnOpponentOnline();
+    }
+    private async Task CheckOpponentOnline()
+    {
+        string request = _requestParser.Parse(_checkOnline);
+        Response response = await SendRequestAsync(request);
+        IsOpponentConnected = response.Flag;
     }
     private void OnOpponentOnline()
     {
         CheckOpponentOnlineEvent?.Invoke(null, EventArgs.Empty);
     }
-    public async Task<bool> CheckOpponentOnline()
+
+    private void StopCheckingOpponent()
     {
-        string request = _requestParser.Parse(_checkOnline);
-        Response response = await SendRequestAsync(request);
-        return response.Flag;
+        // Останавливаем таймер
+        _timer?.Dispose();
     }
+    
+    
+    
     public bool CheckConnection()
     {
         if (_playerSocket != null)
@@ -156,10 +155,14 @@ public class Player
         {
             //case RequestType.CreateNewGame:
 
-            //case RequestType.JoinToGame:
+            case RequestType.JoinToGame:
+                await ConnectToNewPort(IpEndPoint, new Response(RequestType.Port,
+                   await GetStringResponseAsync(buffer, bytesRead)));
+                return new Response(RequestType.JoinToGame,
+                    GetBoolResponseAsync(buffer));
             case RequestType.Online:
                 return new Response(RequestType.Online, 
-                    await GetBoolResponseAsync(buffer));
+                    GetBoolResponseAsync(buffer));
  
             case RequestType.Port:
                 return new Response(RequestType.Port,
@@ -168,7 +171,7 @@ public class Player
                 throw new ApplicationException("Invalid signature!");
         }
     }
-    private async Task<bool> GetBoolResponseAsync(byte[] buffer)
+    private bool GetBoolResponseAsync(byte[] buffer)
     {
         buffer = buffer.Skip(1).ToArray();
         bool response = BitConverter.ToBoolean(buffer, 0);

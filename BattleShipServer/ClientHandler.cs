@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace BattleShipServer;
@@ -20,7 +21,7 @@ public class ClientHandler : IDisposable
     public event Func<TcpClient, int, Task> GetExistingPortRequested;
     public event Func<TcpClient, Task> GetNewPortRequested;
     //public event Func<TcpClient, Task> CheckOnlineOpponent;
-    public event Func<Port, bool> CheckOnline;
+    public event Func<Port, TcpClient, Task> CheckOnline;
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
     {
@@ -91,7 +92,8 @@ public class ClientHandler : IDisposable
                     break;
                 case RequestType.JoinToGame:
                     //проверить создана ли игровая комната в переданном порту и количество человек в ней
-                    await JoinToExistingGameRoom(request);
+                    _isActiv = false;
+                    await JoinToExistingGameRoom(GetPortFromRequest(request));
                     break;
                 case RequestType.Port:
                     //отправить номер порта
@@ -116,12 +118,18 @@ public class ClientHandler : IDisposable
         }
     }
 
-    private bool CheckOpponentOnline()
+    private async Task CheckOpponentOnline()
     {
         if (CheckOnline != null)
-             return CheckOnline.Invoke(port);
+             await CheckOnline.Invoke(port, client);
         else
             throw new ArgumentNullException(nameof(CheckOnline));
+    }
+
+    private string GetPortFromRequest(string reguest) 
+    {
+        string result = Regex.Replace(reguest, @"[^\d]", "");
+        return result;
     }
 
 

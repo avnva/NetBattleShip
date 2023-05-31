@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
@@ -11,54 +12,63 @@ public enum FormState
     Initial, // Начальное состояние формы
     ServerConnect, // Состояние после нажатия на кнопку
     CreateNewGame, //Создание новой игры
-    EnjoyToGame // Подключение к существующей игре
+    EnjoyToGame, // Подключение к существующей игре
+    WaitingStartGame
 }
 public class LogInViewModel:ViewModelBase
 {
-    private Player socket;
+    private Player _player;
     private bool _connected;
     private string _enterEndPoint;
     private IPEndPoint _endPoint;
     private string _name;
     private string _gameRoomNumber;
-    private bool _statusOpponentOnline;
+    //private bool _statusOpponentOnline;
 
     private RequestParser _requestParser;
 
     private Visibility _visibilityConnectControls;
     private Visibility _visibilityChoiseControls;
     private Visibility _visibilityNameControls;
+    private Visibility _visibilityConnectButton;
 
     private bool _isEnabledMaskedTextBox;
+    private bool _isEnabledConnectButton;
 
-    
-    private string _IPandPortMask = "000/000/000/000:00000";
-    private string _roomNumberMask = "00000";
+    private string _IPandPortMask;
+    private string _roomNumberMask = "0000";
+    private string _IPAndPortMask = "000/000/000/000:00000";
     private string _createNewGameRequest = "Create new game";
     private string _getGameRoom = "Get game room";
-    private string _connectToExistingGameRoom = "Connect to existing game room";
+    private string _connectToExistingGameRoom = "Connect to existing game room: ";
+    private string _waitingText = "Ожидаем противника...";
+    private string _opponentConnectedText = "Противник найден. Можно начинать игру!";
 
 
     public LogInViewModel()
     { 
-        socket = new Player();
+        _player = new Player();
         _requestParser = new RequestParser();
         _connected = false;
 
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
         ChangeVisibilityNameControls = Visibility.Visible;
+        ChangeVisibilityConnectButton = Visibility.Visible;
 
-        _isEnabledMaskedTextBox = true;
+        IsEnabledMaskedTb = true;
+        IsEnabledConnectButton = true;
 
         CurrentCommandConnectButton = ConnectCommand;
         CurrentMaskFormat = _IPandPortMask;
-        CurrentBindingMaskedTextBox = EndPoint;
         CurrentLabelText = "Введите IP адрес сервера:";
 
         EndPoint = "127.000.000.001:8888";
+        CurrentMaskFormat = _IPAndPortMask;
+        CurrentBindingMaskedTextBox = EndPoint;
     }
 
+    //команда для кнопки подключения к серверу
     private RelayCommand _connect;
     public RelayCommand ConnectCommand
     {
@@ -73,12 +83,14 @@ public class LogInViewModel:ViewModelBase
             );
         }
     }
+
     private async void Connect()
     {
         try
         {
-            await socket.ConnectAsync(EndPoint);
-            _endPoint = socket.IpEndPoint;
+            await _player.ConnectAsync(EndPoint);
+            _player.Name = Name;
+            _endPoint = _player.IpEndPoint;
         }
         catch (Exception ex)
         {
@@ -86,6 +98,7 @@ public class LogInViewModel:ViewModelBase
         }
     }
 
+    // команда для кнопки создания новой игры
     private RelayCommand _createNewGame;
     public RelayCommand CreateNewGame
     {
@@ -104,13 +117,16 @@ public class LogInViewModel:ViewModelBase
         try
         {
             string request = _requestParser.Parse(_getGameRoom);
-            Response newPort = await socket.SendRequestAsync(request);
+            Response newPort = await _player.SendRequestAsync(request);
 
-            await socket.ConnectToNewPort(_endPoint, newPort);
+            await _player.ConnectToNewPort(_endPoint, newPort);
 
-            _endPoint = socket.IpEndPoint;
+            _endPoint = _player.IpEndPoint;
             _gameRoomNumber = GetGameRoomNumber();
-            socket.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
+
+            _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
+            _player.StartCheckingOpponent();
+
             ChangeContent(FormState.CreateNewGame);
         }
         catch (Exception ex)
@@ -120,13 +136,20 @@ public class LogInViewModel:ViewModelBase
     }
     private string GetGameRoomNumber()
     {
-        return socket.GetPort(_endPoint).ToString();
+        return _player.GetPort(_endPoint).ToString();
     }
     private void ChangeStatusOpponentOnline(object sender, EventArgs e)
     {
-        _statusOpponentOnline = socket.IsOpponentConnected;
-        if (_statusOpponentOnline)
-            OpponentConnectTextChange = "Противник найден. Можно начинать игру!";
+        if (_player.IsOpponentConnected)
+        {
+            OpponentConnectTextChange = _opponentConnectedText;
+            IsEnabledConnectButton = true;
+        }
+        else
+        {
+            OpponentConnectTextChange = _waitingText;
+            IsEnabledConnectButton = false;
+        }
     }
 
     private RelayCommand _connectToGameRoom;
@@ -175,9 +198,11 @@ public class LogInViewModel:ViewModelBase
             );
         }
     }
-    private void GetReadyToGame()
+    private async Task GetReadyToGame()
     {
-        //отправка запроса совпадает ли порт, флаг готовности к игре на true, переход на новую форму
+        //отправка запроса совпадает ли порт, флаг готовности к игре на true
+        GameRoomNumber = _currentBindingTb;
+        await SendRequest(_connectToExistingGameRoom + GameRoomNumber.ToString());
     }
     
     private async Task SendRequest(string request)
@@ -185,7 +210,7 @@ public class LogInViewModel:ViewModelBase
         try
         {
             request = _requestParser.Parse(request);
-            Response response = await socket.SendRequestAsync(request);
+            Response response = await _player.SendRequestAsync(request);
 
             switch (response.Type)
             {
@@ -193,15 +218,16 @@ public class LogInViewModel:ViewModelBase
                     
                     break;
                 case RequestType.JoinToGame:
-                    ChangeContent(FormState.EnjoyToGame);
+                    //смена контента у игрока, начинающего игру, о готовности оппонента.
+                    //Блокировка элементов управления у игрока в ожидании игры
+                    if (response.Flag)
+                    {
+                        _player.StartCheckingOpponent();
+                        ChangeContent(FormState.WaitingStartGame);
+                    }
+                    else
+                        MessageBox_Show(null, "Такой комнаты не существует!", "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
                     break;
-                //case RequestType.Disks:
-                //    ClientLog += $"Client received: {response.Contents}\n";
-                //    UpdateServerDirectoryContents(response.Contents.Split('|'));
-                //    break;
-                //case RequestType.FileContents:
-                //    ClientLog += $"Client received: {response.Contents}\n";
-                //    break;
                 default:
                     break;
             }
@@ -213,67 +239,101 @@ public class LogInViewModel:ViewModelBase
     }
     private void ChangeContent(FormState state)
     {
-        if (CheckConnection())
-        {
+        
             switch (state)
             {
                 case FormState.ServerConnect:
-                    UpdateContentAfterServerConnect();
+                    if (CheckConnection())
+                        ServerConnectUpdateContent();
                     break;
                 case FormState.CreateNewGame:
-                    CreateNewGameContent();
+                    CreateNewGameContentUpdate();
                     break;
                 case FormState.EnjoyToGame:
-                    EnjoyToGameContent();
+                    EnjoyToGameContentUpdate();
+                    break;
+                case FormState.WaitingStartGame:
+                    WaitingStartContentUpdate();
                     break;
                 default:
                     //FormState.Initial;
                     break;
-            }
         }
     }
 
     private bool CheckConnection()
     {
-        return _connected = socket.CheckConnection();
+        return _connected = _player.CheckConnection();
     }
 
-    private void UpdateContentAfterServerConnect()
+    private void ServerConnectUpdateContent()
     {
-        // Создание содержимого формы для состояния после нажатия на кнопку подключения к серверу
+        // Обновление содержимого формы для состояния после нажатия на кнопку подключения к серверу
         ChangeVisibilityChoiseControls = Visibility.Visible;
         ChangeVisibilityConnectControls = Visibility.Collapsed;
         ChangeVisibilityNameControls = Visibility.Collapsed;
+        ChangeVisibilityConnectButton = Visibility.Collapsed;
     }
 
-    private void CreateNewGameContent()
+    private void CreateNewGameContentUpdate()
     {
         // Создание содержимого формы для состояния создания новой игры
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
         ChangeVisibilityNameControls = Visibility.Collapsed;
-        IsEnabledMaskedTbControls = false;
+        ChangeVisibilityConnectButton = Visibility.Visible;
+
+        IsEnabledMaskedTb = false;
+        IsEnabledConnectButton = false;
 
         CurrentCommandConnectButton = StartGameCommand;
+        CurrentBindingMaskedTextBox = null;
         CurrentMaskFormat = _roomNumberMask;
         CurrentBindingMaskedTextBox = GameRoomNumber;
+
         CurrentLabelText = "Номер вашей комнаты:";
-        OpponentConnectTextChange = "Ожидаем противника...";
+        OpponentConnectTextChange = _waitingText;
     }
 
-    private void EnjoyToGameContent()
+    private void EnjoyToGameContentUpdate()
     {
         // Создание содержимого формы для состояния подключения к существующей игре
         ChangeVisibilityChoiseControls = Visibility.Collapsed;
         ChangeVisibilityConnectControls = Visibility.Visible;
         ChangeVisibilityNameControls = Visibility.Collapsed;
-        IsEnabledMaskedTbControls = true;
+        ChangeVisibilityConnectButton = Visibility.Visible;
+        IsEnabledMaskedTb = true;
 
         CurrentCommandConnectButton = GetReadyToGameCommand;
+        CurrentBindingMaskedTextBox = null;
         CurrentMaskFormat = _roomNumberMask;
         CurrentBindingMaskedTextBox = GameRoomNumber;
         CurrentLabelText = "Введите номер комнаты:";
         OpponentConnectTextChange = "";
+    }
+
+
+
+
+    private async Task Disconnect()
+    {
+        try
+        {
+            await _player.DisconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+
+
+    private void WaitingStartContentUpdate()
+    {
+        IsEnabledMaskedTb = false;
+        ChangeVisibilityConnectButton = Visibility.Collapsed;
+        OpponentConnectTextChange = "Ожидание начала игры...";
     }
 
     private ICommand _currentCommandConnectButton;
@@ -344,7 +404,7 @@ public class LogInViewModel:ViewModelBase
 
     public string GameRoomNumber
     {
-        get => _gameRoomNumber;
+        get { return _gameRoomNumber; }
         set
         {
             _gameRoomNumber = value;
@@ -391,14 +451,33 @@ public class LogInViewModel:ViewModelBase
             OnPropertyChange(nameof(ChangeVisibilityNameControls));
         }
     }
+    public Visibility ChangeVisibilityConnectButton
+    {
+        get { return _visibilityConnectButton; }
+        set
+        {
+            _visibilityConnectButton = value;
+            OnPropertyChange(nameof(ChangeVisibilityConnectButton));
+        }
 
-    public bool IsEnabledMaskedTbControls
+    }
+
+    public bool IsEnabledMaskedTb
     {
         get { return _isEnabledMaskedTextBox; }
         set
         {
             _isEnabledMaskedTextBox = value;
-            OnPropertyChange(nameof(IsEnabledMaskedTbControls));
+            OnPropertyChange(nameof(IsEnabledMaskedTb));
+        }
+    }
+    public bool IsEnabledConnectButton
+    {
+        get { return _isEnabledConnectButton; }
+        set
+        {
+            _isEnabledConnectButton = value;
+            OnPropertyChange(nameof(IsEnabledConnectButton));
         }
     }
 

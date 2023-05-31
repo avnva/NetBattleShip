@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
+using BattleShip.ViewModels;
 
 namespace BattleShip;
 
@@ -12,6 +11,7 @@ public class ViewModelBase : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler PropertyChanged;
     public event EventHandler<MessageBoxEventArgs> MessageBoxRequest;
+    public event EventHandler<OpenViewEventArgs> OpenNewWindow;
     public Action Close { get; set; }
     protected void MessageBox_Show(Action<MessageBoxResult> resultAction, string messageBoxText,
         string caption = "", MessageBoxButton button = MessageBoxButton.OK,
@@ -26,6 +26,10 @@ public class ViewModelBase : INotifyPropertyChanged
     protected void OnPropertyChange(string propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+    protected void OpenNewView(Window view)
+    {
+        OpenNewWindow?.Invoke(this, new OpenViewEventArgs(view));
     }
 
     protected void Dispose()

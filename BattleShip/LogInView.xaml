@@ -10,6 +10,7 @@
         WindowStartupLocation="CenterScreen"
         Icon="{StaticResource AppIcon}"
         ResizeMode="NoResize">
+    
 
     <Window.Resources>
         <ResourceDictionary>
@@ -85,13 +86,16 @@
                 <xctk:MaskedTextBox x:Name="tbIP" Mask="{Binding CurrentMaskFormat}" 
                                     FontFamily="Verdana" FontSize="16" 
                                     Grid.Row="1" Grid.Column="2" 
+                                    PromptChar =" "
+                                    HidePromptOnLeave ="False"
                                     TextAlignment="Center"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Margin="5,10,17,10"
                                     Text="{Binding CurrentBindingMaskedTextBox}"
                                     Visibility="{Binding ChangeVisibilityConnectControls}"
-                                    IsEnabled="{Binding IsEnabledMaskedTbControls}" Width="250" Height="34"/>
+                                    IsEnabled="{Binding IsEnabledMaskedTb}" 
+                                    Width="250" Height="34"/>
 
                 <TextBox Style="{StaticResource TextBoxStyle}" 
                          Grid.Row="2" Grid.Column="2" 
@@ -129,7 +133,8 @@
                     Content="{StaticResource LogInButtonHeading}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
                     Command="{Binding CurrentCommandConnectButton}"
-                    Visibility="{Binding ChangeVisibilityConnectControls}" 
+                    Visibility="{Binding ChangeVisibilityConnectButton}"
+                    IsEnabled="{Binding IsEnabledConnectButton}"
                     Grid.ColumnSpan="3" Margin="200,0,0,0" 
                     RenderTransformOrigin="0.502,0.104" Height="45"/>
 

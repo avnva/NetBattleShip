@@ -20,7 +20,7 @@ public class RequestParser
             return Encoding.UTF8.GetString(new[] { _createNewGameRequest }) + request;
         if (request == @"Get game room")
             return Encoding.UTF8.GetString(new[] { _getNewPortRequest }) + request;
-        if(request == @"Connect to existing game room")
+        if(request.Contains("Connect to existing game room: "))
             return Encoding.UTF8.GetString(new[] { _connectToExistingGameRoom }) + request;
         if (request == @"Check online")
             return Encoding.UTF8.GetString(new[] { _checkOnline }) + request;
