@@ -132,7 +132,7 @@
                 <Button Name="ConnectToServer" Template="{DynamicResource btLogIn}" 
                     Content="{StaticResource LogInButtonHeading}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
-                    Command="{Binding CurrentCommandConnectButton}"
+                    Command="{Binding StartGameCommand}"
                     Visibility="{Binding ChangeVisibilityConnectButton}"
                     IsEnabled="{Binding IsEnabledConnectButton}"
                     Grid.ColumnSpan="3" Margin="200,0,0,0" 

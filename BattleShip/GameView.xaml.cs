@@ -10,31 +10,35 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using Xceed.Wpf.Toolkit;
 
 namespace BattleShip;
 
 /// <summary>
-/// Логика взаимодействия для LogInView.xaml
+/// Логика взаимодействия для GameView.xaml
 /// </summary>
-public partial class LogInView : Window
+public partial class GameView : Window
 {
-    public LogInView()
+    public GameView()
     {
-        DataContext = new LogInViewModel();
-        (DataContext as ViewModelBase).MessageBoxRequest += ViewMessageBoxRequest;
-        Closing += OnClose;
         InitializeComponent();
-        (DataContext as ViewModelBase).Close += () => { Close(); };
+    }
+
+    public GameView(GameViewModel vm)
+    {
+        DataContext = vm;
+        Closing += OnClose;
+        (DataContext as ViewModelBase).MessageBoxRequest +=
+            ViewMessageBoxRequest;
+        InitializeComponent();
     }
 
     private void ViewMessageBoxRequest(object sender, MessageBoxEventArgs e)
     {
         e.Show();
     }
+
     private void OnClose(object sender, CancelEventArgs e)
     {
         Closing -= OnClose;

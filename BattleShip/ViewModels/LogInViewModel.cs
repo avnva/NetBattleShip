@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
@@ -46,7 +47,7 @@ public class LogInViewModel:ViewModelBase
 
 
     public LogInViewModel()
-    { 
+    {
         _player = new Player();
         _requestParser = new RequestParser();
         _connected = false;
@@ -171,17 +172,26 @@ public class LogInViewModel:ViewModelBase
     {
         get
         {
-            return _startGame ?? new RelayCommand(
+            return _startGame ?? (_startGame = new RelayCommand(
                 _execute => {
                     StartGame();
                 },
                 _canExecute => true
-            );
+            ));
         }
     }
     private void StartGame()
     {
         //проверка флага готовности к игре у противника, переход на новую форму
+        try
+        {
+            OpenNewView(new GameView(new GameViewModel()));
+            Close?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Возникла ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
 
     }
 
