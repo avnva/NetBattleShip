@@ -1,32 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media;
 
-namespace BattleShip.ViewModels;
+namespace BattleShip;
+public enum CellState
+{
+    Empty,
+    Ship,
+    Hit,
+    Miss
+}
 public class CellViewModel : ViewModelBase
 {
-    private int _row;
-    private int _column;
+    private CellState _state;
 
-    public int Row
+    public int Row { get; }
+    public int Column { get; }
+
+    public CellState State
     {
-        get { return _row; }
+        get { return _state; }
         set
         {
-            _row = value;
-            OnPropertyChange(nameof(Row));
+            _state = value;
+            OnPropertyChange(nameof(State));
+            OnPropertyChange(nameof(CellColor));
         }
     }
 
-    public int Column
+    public SolidColorBrush CellColor
     {
-        get { return _column; }
-        set
+        get
         {
-            _column = value;
-            OnPropertyChange(nameof(Column));
+            return (SolidColorBrush)new 
+                CellStateToColorConverter().Convert(State, typeof(SolidColorBrush), null, CultureInfo.CurrentCulture);
         }
     }
 
@@ -34,5 +45,6 @@ public class CellViewModel : ViewModelBase
     {
         Row = row;
         Column = column;
+        State = CellState.Empty;
     }
 }

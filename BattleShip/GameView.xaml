@@ -2,32 +2,47 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:local="clr-namespace:BattleShip" d:DataContext="{d:DesignInstance Type=local:GameViewModel}"
         mc:Ignorable="d"
         Title="Морской бой по локальной сети" Height="700" Width="800"
         WindowStartupLocation="CenterScreen"
         Icon="{StaticResource AppIcon}"
         ResizeMode="NoResize">
+    <Window.Resources>
+        <local:CellPositionConverter x:Key="CellPositionConverter" />
+        <local:CellStateToColorConverter x:Key="CellColorConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.Background>
             <ImageBrush ImageSource="/Images/Background.jpg"/>
         </Grid.Background>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*"/>
-            <ColumnDefinition Width="350"/>
+            <ColumnDefinition Width="300"/>
             <ColumnDefinition Width="1*"/>
-            <ColumnDefinition Width="350"/>
+            <ColumnDefinition Width="300"/>
             <ColumnDefinition Width="1*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="20"/>
-            <RowDefinition Height="350"/>
-            <RowDefinition Height="36"/>
-            <RowDefinition Height="200"/>
-            <RowDefinition Height="36"/>
+            <RowDefinition Height="0.5*"/>
+            <RowDefinition Height="300"/>
+            <RowDefinition Height="0.5*"/>
+            <RowDefinition Height="250"/>
+            <RowDefinition Height="0.5*"/>
         </Grid.RowDefinitions>
+        <Label Style="{StaticResource LabelStyle}"
+                       Content="Ваше поле"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       Width="300" Grid.Row="0" Grid.Column="1" Margin="0,0,0,300" Grid.RowSpan="2"/>
+
+        <Label Style="{StaticResource LabelStyle}"
+                       Content="Поле противника"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       Width="300" Grid.Row="0" Grid.Column="3" Margin="0,0,0,300" Grid.RowSpan="2"/>
 
         <ItemsControl ItemsSource="{Binding PlayerCells}" Grid.Row="1" Grid.Column="1">
             <ItemsControl.ItemContainerStyle>
@@ -43,10 +58,16 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border BorderBrush="#1E2460" BorderThickness="2">
-                        <Button Command="{Binding DataContext.CellClickedCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                CommandParameter="{Binding}"
+                        <Button Command="{Binding DataContext.AddShipCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
                                 Background="{Binding CellColor}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}, Path=Tag}"
                                 Width="50" Height="50">
+                            <Button.Tag>
+                                <MultiBinding Converter="{StaticResource CellPositionConverter}">
+                                    <Binding Path="Row" />
+                                    <Binding Path="Column" />
+                                </MultiBinding>
+                            </Button.Tag>
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -78,7 +99,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border BorderBrush="#1E2460" BorderThickness="2">
-                        <Button Command="{Binding DataContext.CellClickedCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        <Button Command="{Binding AddShipCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                 CommandParameter="{Binding}"
                                 Background="{Binding CellColor}"
                                 Width="50" Height="50">
@@ -98,5 +119,75 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <Grid Grid.Row="3" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42*"/>
+                <RowDefinition Height="125*"/>
+                <RowDefinition Height="83*"/>
+            </Grid.RowDefinitions>
+            <Label Style="{StaticResource LabelStyle}"
+                       FontSize ="18"
+                       Content="{Binding ChoiseShipText}"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       VerticalContentAlignment="Top"
+                       Visibility="{Binding ChangeVisibilityConnectControls}"
+                       Width="300" Grid.Row="0" Margin="0,0,0,78" Grid.RowSpan="2"/>
+
+            <ComboBox Style="{StaticResource ComboBoxStyle}"
+                ItemsSource="{Binding AvailableShips}" 
+              SelectedItem="{Binding SelectedShip}" 
+              Visibility="{Binding ChangeVisibilityComboBox}"
+              Height="25" Margin="30,32,30,110" Grid.RowSpan="2">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" />
+                            <TextBlock Text=" (Размер: " />
+                            <TextBlock Text="{Binding Size}" />
+                            <TextBlock Text=")" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+        </Grid>
+        <Button x:Name="ReadyToGame"
+                    Content="Начать игру!" 
+                    Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
+                    Command="{Binding ConnectToExistingGameRoom}"
+                    Visibility="{Binding ChangeVisibilityReadyButton}" 
+                    Grid.Column="1" Grid.Row="3" 
+                    Height="40" Width="215" Margin="0,35,0,0"/>
+
+        <Button x:Name="Cancellation"
+                    Content="Отмена" 
+                    Style="{StaticResource ButtonStyle}" 
+                    VerticalAlignment="Top" HorizontalAlignment="Center"
+                    Command="{Binding CancellationChoiseCommand}"
+                    Visibility="{Binding ChangeVisibilityCancellationButton}" 
+                    Grid.Column="1" Grid.Row="3" 
+                    Height="37" Width="215" Margin="0,90,0,0"/>
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="28,90,67,38"
+                    Visibility="{Binding ChangeVisibilityChooseDirectionPanel}">
+            <RadioButton 
+                Style="{StaticResource RadioButtonStyle}" 
+                Content="Горизонтальное" 
+                IsChecked="True"
+                Command="{Binding SetDirectionCommand}" 
+                CommandParameter="{x:Static local:ShipDirection.Horizontal}"
+                GroupName="ShipDirection" Height="22"
+                Visibility="{Binding ChangeVisibilityChooseDirectionPanel}"/>
+
+            <RadioButton 
+                Style="{StaticResource RadioButtonStyle}" 
+                Command="{Binding SetDirectionCommand}" 
+                CommandParameter="{x:Static local:ShipDirection.Vertical}"
+                Visibility="{Binding ChangeVisibilityChooseDirectionPanel}"
+                Content="Вертикальное" 
+                GroupName="ShipDirection"/>
+        </StackPanel>
+
     </Grid>
 </Window>
