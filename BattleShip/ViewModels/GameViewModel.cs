@@ -11,6 +11,7 @@ using System.Net;
 using System.Windows.Controls;
 using System.Windows;
 using System.Data.Common;
+using BattleShip.Model;
 
 namespace BattleShip;
 public enum ShipDirection
@@ -26,32 +27,35 @@ public class GameViewModel : ViewModelBase
     private ObservableCollection<Ship> _availableShips;
     private Ship _selectedShip;
     private GameManager _gameManager;
+    private Player _player;
 
     private string _chooseShipText = "Выберите корабль:";
     private string _selectedShipText = "Выбран корабль: ";
     private string _chooseDirectionText = "Выберите положение:";
     private string _shipsAreOverText = "Все корабли расставлены!";
-    
+    private string _opponentOnlineText = "Противник онлайн";
+    private string _opponentOfflineText = "Противник офлайн...";
+
 
     private Visibility _visibilityComboBox;
     private Visibility _visibilityCancellationButton;
     private Visibility _visibilityReadyButton;
     private Visibility _visibilityChooseDirectionPanel;
     private Visibility _visibilityDeleteButton;
-    public GameViewModel()
+    public GameViewModel(Player player)
     {
-        _gameManager = new GameManager();
+        _player = player;
+        _gameManager = new GameManager(_player);
         _gameManager.PlayerCellsChanged += OnPlayerCellsChanged;
         _gameManager.EnemyCellsChanged += OnEnemyCellsChanged;
+        _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
         _gameManager.CellUpdated += CellUpdated;
         PlayerCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.PlayerCells));
+        EnemyCells = new ObservableCollection<CellViewModel>();
 
         ChoiseShipText = _chooseShipText;
+        HideControls();
         ChangeVisibilityComboBox = Visibility.Visible;
-        ChangeVisibilityCancellationButton = Visibility.Collapsed;
-        ChangeVisibilityReadyButton = Visibility.Collapsed;
-        ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
-        ChangeVisibilityDeleteButton = Visibility.Collapsed;
         CurrentCommandCellButton = AddShipCommand;
 
         AvailableShips = new ObservableCollection<Ship>
@@ -68,6 +72,17 @@ public class GameViewModel : ViewModelBase
             new Ship(4)
         };
 
+    }
+    private void ChangeStatusOpponentOnline(object sender, EventArgs e)
+    {
+        if (_player.IsOpponentConnected)
+        {
+            OpponentConnectionText = _opponentOnlineText;
+        }
+        else
+        {
+            OpponentConnectionText = _opponentOfflineText;
+        }
     }
 
     private void OnPlayerCellsChanged()
@@ -135,20 +150,25 @@ public class GameViewModel : ViewModelBase
         {
             _selectedShip = value;
             OnPropertyChange(nameof(SelectedShip));
-            if(SelectedShip.Size != 1)
-            {
-                ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
-                ChangeVisibilityComboBox = Visibility.Collapsed;
-                ChangeVisibilityCancellationButton = Visibility.Collapsed;
-                ChangeVisibilityChooseDirectionPanel = Visibility.Visible;
-                ChangeVisibilityReadyButton = Visibility.Collapsed;
-                ChangeVisibilityDeleteButton = Visibility.Collapsed;
-            }
-            
+            CheckShipSize();
+        }
+    }
+    private void CheckShipSize()
+    {
+        if (SelectedShip != null && SelectedShip.Size != 1)
+        {
+            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
+            HideControls();
+            ChangeVisibilityChooseDirectionPanel = Visibility.Visible;
+        }
+        else if(SelectedShip != null && SelectedShip.Size == 1)
+        {
+            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name;
+            HideControls();
+            ChangeVisibilityCancellationButton = Visibility.Visible;
         }
     }
 
-    
     public Visibility ChangeVisibilityComboBox
     {
         get { return _visibilityComboBox; }
@@ -221,10 +241,8 @@ public class GameViewModel : ViewModelBase
             _currentDirection = value;
             OnPropertyChange(nameof(CurrentDirection));
             ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name;
-            ChangeVisibilityComboBox = Visibility.Collapsed;
+            HideControls();
             ChangeVisibilityCancellationButton = Visibility.Visible;
-            ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
-            ChangeVisibilityDeleteButton = Visibility.Collapsed;
         }
     }
 
@@ -241,6 +259,17 @@ public class GameViewModel : ViewModelBase
                 ChoiseShipText += "вертикально";
             else
                 ChoiseShipText += "горизонтально";
+        }
+    }
+
+    private string _opponentConnectText;
+    public string OpponentConnectionText
+    {
+        get { return _opponentConnectText; }
+        set
+        {
+            _opponentConnectText = value;
+            OnPropertyChange(nameof(OpponentConnectionText));
         }
     }
 
@@ -271,9 +300,12 @@ public class GameViewModel : ViewModelBase
 
     private void CancelChoise()
     {
-        ChangeVisibilityCancellationButton = Visibility.Collapsed;
+        HideControls();
         ChoiseShipText = _chooseShipText;
         ChangeVisibilityComboBox = Visibility.Visible;
+        if (AvailableShips.Count != 10)
+            ChangeVisibilityDeleteButton = Visibility.Visible;
+
     }
     public ObservableCollection<CellViewModel> PlayerCells
     {
@@ -303,7 +335,6 @@ public class GameViewModel : ViewModelBase
             return _addShip ?? (_addShip = new RelayCommand(
                 _execute => {
                     AddShip(CellClicked((string)_execute));
-                    
                     CheckShipsCollection();
                 },
                 _canExecute => true
@@ -320,9 +351,7 @@ public class GameViewModel : ViewModelBase
                 _execute => {
                     CurrentCommandCellButton = DeleteShipFromCellCommand;
                     ChoiseShipText = _chooseShipText;
-                    ChangeVisibilityDeleteButton = Visibility.Collapsed;
-                    ChangeVisibilityComboBox = Visibility.Collapsed;
-
+                    HideControls();
                 },
                 _canExecute => true
             ));
@@ -343,6 +372,24 @@ public class GameViewModel : ViewModelBase
         }
     }
 
+    private RelayCommand _startGame;
+    public RelayCommand StartGameCommand
+    {
+        get
+        {
+            return _startGame ?? (_startGame = new RelayCommand(
+                _execute => {
+                    StartGame();
+                },
+                _canExecute => true
+            ));
+        }
+    }
+    private void StartGame()
+    {
+        _gameManager.GenerateEnemyField();
+        EnemyCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.EnemyCells));
+    }
 
     private CellViewModel CellClicked(object parameter)
     {
@@ -357,8 +404,6 @@ public class GameViewModel : ViewModelBase
         CellViewModel cell = PlayerCells.Single(c => c.Row == row && c.Column == col);
         return cell;
     }
-
-
     private void AddShip(CellViewModel cell)
     {
         try
@@ -370,9 +415,9 @@ public class GameViewModel : ViewModelBase
 
             AvailableShips.Remove(SelectedShip);
             ChoiseShipText = _chooseShipText;
+
+            HideControls();
             ChangeVisibilityComboBox = Visibility.Visible;
-            ChangeVisibilityCancellationButton = Visibility.Collapsed;
-            ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
 
             if(AvailableShips.Count != 10)
                 ChangeVisibilityDeleteButton = Visibility.Visible;
@@ -395,9 +440,9 @@ public class GameViewModel : ViewModelBase
 
             AvailableShips.Add(deletedShip);
             ChoiseShipText = _chooseShipText;
+
+            HideControls();
             ChangeVisibilityComboBox = Visibility.Visible;
-            ChangeVisibilityCancellationButton = Visibility.Collapsed;
-            ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
 
             if (AvailableShips.Count != 10)
                 ChangeVisibilityDeleteButton = Visibility.Visible;
@@ -408,18 +453,24 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-
     private void CheckShipsCollection()
     {
         if (AvailableShips.Count == 0)
         {
             ChoiseShipText = _shipsAreOverText;
-            ChangeVisibilityComboBox = Visibility.Collapsed;
-            ChangeVisibilityCancellationButton = Visibility.Collapsed;
-            ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+            HideControls();
             ChangeVisibilityReadyButton = Visibility.Visible;
             ChangeVisibilityDeleteButton = Visibility.Visible;
         }
+    }
+
+    private void HideControls()
+    {
+        ChangeVisibilityCancellationButton = Visibility.Collapsed;
+        ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+        ChangeVisibilityComboBox = Visibility.Collapsed;
+        ChangeVisibilityDeleteButton = Visibility.Collapsed;
+        ChangeVisibilityReadyButton = Visibility.Collapsed;
     }
 
 }

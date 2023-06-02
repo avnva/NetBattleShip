@@ -94,4 +94,18 @@ public class GameRoomManager
         }
         return false;
     }
+
+    public TcpClient GetOpponent(TcpClient client, Port port)
+    {
+        foreach (GameRoom room in _gameRooms)
+        {
+            if (room.Port == port)
+            {
+                if (room.players[0] == client)
+                    return room.players[1];
+                else return room.players[0];
+            }
+        }
+        return client;
+    }
 }

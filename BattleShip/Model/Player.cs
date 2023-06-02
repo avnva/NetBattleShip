@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-
+using System.Windows;
 
 namespace BattleShip;
 
@@ -21,17 +21,21 @@ public class Player
     private Thread ping;
     private NetworkStream _networkStream;
     private int lastPingTime;
-    private int pingTime = 5;
+    private int pingTime = 10;
     private string _checkOnline = "Check online";
+    private string _getGameRoom = "Get game room";
     public bool IsOpponentConnected = false;
     public event EventHandler CheckOpponentOnlineEvent;
     private RequestParser _requestParser;
-
-
     public Player()
     {
         lastPingTime = DateTime.Now.Second;
         _requestParser = new RequestParser();
+        Application.Current.Exit += Application_Exit;
+    }
+    private void Application_Exit(object sender, ExitEventArgs e)
+    {
+        DisconnectAsync().Wait(); // Дождитесь завершения отключения
     }
     public string Name { get; set; }
 
@@ -51,6 +55,14 @@ public class Player
         return ip.Port;
     }
 
+    public async Task CreateNewGame()
+    {
+        string request = _requestParser.Parse(_getGameRoom);
+        Response newPort = await SendRequestAsync(request);
+
+        await ConnectToNewPort(IpEndPoint, newPort);
+    }
+
     public async Task ConnectToNewPort(IPEndPoint ip, Response response)
     {
         int.TryParse(response.Contents, out var port);
@@ -63,6 +75,7 @@ public class Player
 
         ping = new Thread(WaitForPing);
         ping.Start();
+        StartCheckingOpponent();
 
     }
 
@@ -72,7 +85,7 @@ public class Player
     {
         // Таймер, который будет проверять каждые 5 секунд онлайн ли оппонент 
         _timer = new System.Timers.Timer();
-        _timer.Interval = 20000;
+        _timer.Interval = 5000;
         _timer.Elapsed += CheckOnline;
         _timer.AutoReset = true;
         _timer.Enabled = true;
@@ -93,7 +106,7 @@ public class Player
         CheckOpponentOnlineEvent?.Invoke(null, EventArgs.Empty);
     }
 
-    private void StopCheckingOpponent()
+    public void StopCheckingOpponent()
     {
         // Останавливаем таймер
         _timer?.Dispose();
@@ -145,20 +158,22 @@ public class Player
 
         return await GetResponseAsync(message);
     }
-
-
     private async Task<Response> GetResponseAsync(string message)
     {
         byte[] buffer = new byte[1024 * 8];
-        int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length);;
+        int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length);
         switch ((RequestType)buffer[0])
         {
-            //case RequestType.CreateNewGame:
-
+            case RequestType.CreateNewGame:
+                return new Response(RequestType.CreateNewGame,
+                    GetBoolResponseAsync(buffer));
             case RequestType.JoinToGame:
                 await ConnectToNewPort(IpEndPoint, new Response(RequestType.Port,
                    await GetStringResponseAsync(buffer, bytesRead)));
                 return new Response(RequestType.JoinToGame,
+                    GetBoolResponseAsync(buffer));
+            case RequestType.WaitingOpponent:
+                return new Response(RequestType.WaitingOpponent,
                     GetBoolResponseAsync(buffer));
             case RequestType.Online:
                 return new Response(RequestType.Online, 
@@ -199,18 +214,18 @@ public class Player
 
     public async Task DisconnectAsync()
     {
+        ping.Interrupt();
+        StopCheckingOpponent();
         await _networkStream.WriteAsync(new[] { (byte)RequestType.Disconnect }, 0, 1);
         await _networkStream.FlushAsync();
-        StopCheckingOpponent();
         CloseSocket();
     }
 
     private void CloseSocket()
     {
         _playerSocket.Close();
-        Disconnected?.Invoke();
-        StopCheckingOpponent();
+        //Disconnected?.Invoke();
     }
 
-    public Action Disconnected { get; set; }
+    //public Action Disconnected { get; set; }
 }

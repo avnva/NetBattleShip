@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.Common;
 
 namespace BattleShipServer;
 
@@ -15,6 +16,7 @@ public class TCPServer
     private Port startPort;
     private int portsAmount = 1000;
     private GameRoomManager roomManager;
+
 
     public TCPServer(ILogger logger)
     {
@@ -45,14 +47,22 @@ public class TCPServer
         }
     }
 
-    private async Task CreateNewGame(TcpClient client)
+    private async Task CreateNewGame(Port port, TcpClient client)
     {
-        Port newPort = FindFreePort();
-        _logger.Log($" >> Found new port: {newPort.PortValue}");
-        TcpClient newClient = await RedirectingToNewPort(client, newPort, RequestType.Port);
-
-        AddClientToNewGameRoom(newClient, newPort);
-        _logger.Log($" >> Client connected to new game room");
+        if (roomManager.CheckPlayersConnection(port))
+        {
+            await SendMessage(client, true, RequestType.CreateNewGame);
+            TcpClient opponent = roomManager.GetOpponent(client, port);
+            if (opponent == client)
+                throw new Exception("Error");
+            await SendMessage(opponent, true, RequestType.WaitingOpponent);
+            _logger.Log($" >> Start new game on port {port.PortValue}");
+        }
+        else
+        {
+            await SendMessage(client, false, RequestType.CreateNewGame);
+            _logger.Log($" >> Error");
+        }
     }
 
     private async Task<TcpClient> RedirectingToNewPort(TcpClient client, Port newPort, RequestType type)
@@ -67,12 +77,21 @@ public class TCPServer
         ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
         clientHandler.CheckOnline += CheckOnline;
         clientHandler.Start();
+        if(type == RequestType.Port)
+            clientHandler.CreateNewGameRequested += CreateNewGame;
         return cl;
     }
 
     private async Task HandleCreateNewGameRoom(TcpClient client)
     {
-        await CreateNewGame(client);
+        Port newPort = FindFreePort();
+        _logger.Log($" >> Found new port: {newPort.PortValue}");
+        TcpClient newClient = await RedirectingToNewPort(client, newPort, RequestType.Port);
+        
+
+        AddClientToNewGameRoom(newClient, newPort);
+        _logger.Log($" >> Client connected to new game room");
+        
     }
 
     private async Task CheckOnline(Port port, TcpClient client) 
@@ -102,8 +121,8 @@ public class TCPServer
             TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.JoinToGame);
             roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
             _logger.Log($" >> Client connected to existing game room");
-            await SendMessage(newClient, true, RequestType.JoinToGame);
-            _logger.Log($" >> Server sent: connection successful");
+            //await SendMessage(newClient, true, RequestType.JoinToGame);
+            //_logger.Log($" >> Server sent: connection successful");
         }
     }
 

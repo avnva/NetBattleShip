@@ -151,16 +151,23 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
-
         </Grid>
+        <Label Style="{StaticResource LabelStyle}"
+                       FontSize ="18"
+                       Content="{Binding OpponentConnectionText}"
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       VerticalContentAlignment="Top"
+                       Width="300" Grid.Row="3" Grid.Column="1" Margin="0,250,0,22" Grid.RowSpan="2"/>
+
         <Button x:Name="ReadyToGame"
                     Content="Начать игру!" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
-                    Command="{Binding ConnectToExistingGameRoom}"
+                    Command="{Binding StartGameCommand}"
                     Visibility="{Binding ChangeVisibilityReadyButton}" 
                     Grid.Column="1" Grid.Row="3" 
                     Height="40" Width="215" Margin="0,35,0,0"/>
-        
+
         <Button x:Name="DeleteShip"
                     Content="Удалить" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"

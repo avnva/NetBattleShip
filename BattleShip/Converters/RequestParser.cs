@@ -11,8 +11,9 @@ public class RequestParser
 {
     private byte _createNewGameRequest = 0;
     private byte _connectToExistingGameRoom = 1;
-    private byte _getNewPortRequest = 2;
-    private byte _checkOnline = 3;
+    private byte _waitingOpponent = 2;
+    private byte _getNewPortRequest = 3;
+    private byte _checkOnline = 4;
 
     public string Parse(string request)
     {
@@ -24,6 +25,8 @@ public class RequestParser
             return Encoding.UTF8.GetString(new[] { _connectToExistingGameRoom }) + request;
         if (request == @"Check online")
             return Encoding.UTF8.GetString(new[] { _checkOnline }) + request;
+        if (request == @"Waiting opponent")
+            return Encoding.UTF8.GetString(new[] { _waitingOpponent }) + request;
         else
             return null;
 

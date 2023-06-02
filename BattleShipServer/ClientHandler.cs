@@ -12,7 +12,7 @@ public class ClientHandler : IDisposable
 {
     private TcpClient client;
     private ILogger logger;
-    private Port port;
+    public Port port;
     private NetworkStream networkStream;
     Thread thread;
     private bool _isActiv;
@@ -22,6 +22,8 @@ public class ClientHandler : IDisposable
     public event Func<TcpClient, Task> GetNewPortRequested;
     //public event Func<TcpClient, Task> CheckOnlineOpponent;
     public event Func<Port, TcpClient, Task> CheckOnline;
+    public event Func<Port, TcpClient, Task> CreateNewGameRequested;
+
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
     {
@@ -86,9 +88,7 @@ public class ClientHandler : IDisposable
             switch ((RequestType)type[0])
             {
                 case RequestType.CreateNewGame:
-                    //выдать игровую комнату и новый порт
-                    
-                    
+                    await CreateNewGame();
                     break;
                 case RequestType.JoinToGame:
                     //проверить создана ли игровая комната в переданном порту и количество человек в ней
@@ -101,11 +101,14 @@ public class ClientHandler : IDisposable
                     _isActiv = false;
                     break;
                 case RequestType.Online:
-                    CheckOpponentOnline();
+                    await CheckOpponentOnline();
+                    break;
+                case RequestType.WaitingOpponent:
                     break;
                 case RequestType.Ping:
                     break;
                 case RequestType.Disconnect:
+                    _isActiv = false;
                     Disconnect();
                     break;
                 default:
@@ -116,6 +119,14 @@ public class ClientHandler : IDisposable
         {
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
+    }
+
+    private async Task CreateNewGame()
+    {
+        if (CreateNewGameRequested != null)
+            await CreateNewGameRequested.Invoke(port, client);
+        else
+            throw new ArgumentNullException(nameof(CreateNewGameRequested));
     }
 
     private async Task CheckOpponentOnline()
@@ -178,6 +189,7 @@ public class ClientHandler : IDisposable
         await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
         await networkStream.FlushAsync();
     }
+
 
     private void CheckConneciton()
     {

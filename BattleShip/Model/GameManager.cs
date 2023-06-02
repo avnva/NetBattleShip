@@ -5,19 +5,46 @@ using System.Text;
 using System.Threading.Tasks;
 using Xceed.Wpf.Toolkit;
 
-namespace BattleShip;
+namespace BattleShip.Model;
 
 public class GameManager
 {
     private List<Cell> _playerCells;
     private List<Cell> _enemyCells;
     private Cell _cell;
+    private Player _player;
 
     public event Action PlayerCellsChanged;
     public event Action EnemyCellsChanged;
     public delegate void CellUpdatedEventHandler(Cell cell);
     public event CellUpdatedEventHandler CellUpdated;
 
+    public GameManager(Player player)
+    {
+        // Инициализация списка клеток игрока
+        _player = player;
+        PlayerCells = GenerateCells();
+    }
+    public void GenerateEnemyField()
+    {
+        EnemyCells = GenerateCells();
+    }
+
+    private List<Cell> GenerateCells()
+    {
+        var cells = new List<Cell>();
+
+        for (int i = 0; i < 10; i++)
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                var cell = new Cell(i, j);
+                cells.Add(cell);
+            }
+        }
+
+        return cells;
+    }
     public List<Cell> PlayerCells
     {
         get { return _playerCells; }
@@ -46,28 +73,6 @@ public class GameManager
         }
     }
 
-    public GameManager()
-    {
-        // Инициализация списка клеток
-        PlayerCells = GenerateCells();
-    }
-
-    private List<Cell> GenerateCells()
-    {
-        var cells = new List<Cell>();
-
-        for (int i = 0; i < 10; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                var cell = new Cell(i, j);
-                cells.Add(cell);
-            }
-        }
-
-        return cells;
-    }
-
     protected virtual void OnPlayerCellsChanged()
     {
         PlayerCellsChanged?.Invoke();
@@ -86,7 +91,7 @@ public class GameManager
     public void AddShipToCells(int row, int column, Ship ship, ShipDirection direction)
     {
         Cell cell = _playerCells.FirstOrDefault(c => c.Row == row && c.Column == column);
-        int shipSize = (int)ship.Size;
+        int shipSize = ship.Size;
         if (!CanPlaceShip(cell, shipSize, direction))
             throw new Exception("Здесь нельзя разместить корабль данного типа!");
         // Разместить корабль на игровом поле
@@ -273,7 +278,7 @@ public class GameManager
 
     private Cell FindFirstCell(Cell cell, ShipDirection shipDirection)
     {
-        Cell firstCell = new Cell(cell.Row,cell.Column);
+        Cell firstCell = new Cell(cell.Row, cell.Column);
         if (shipDirection == ShipDirection.Horizontal)
         {
             for (int i = 1; i < 4; i++)
