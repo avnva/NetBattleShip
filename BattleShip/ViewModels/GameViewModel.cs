@@ -25,40 +25,97 @@ public class GameViewModel : ViewModelBase
     private ObservableCollection<CellViewModel> _enemyCells;
     private ObservableCollection<Ship> _availableShips;
     private Ship _selectedShip;
+    private GameManager _gameManager;
 
     private string _chooseShipText = "Выберите корабль:";
     private string _selectedShipText = "Выбран корабль: ";
     private string _chooseDirectionText = "Выберите положение:";
     private string _shipsAreOverText = "Все корабли расставлены!";
+    
 
     private Visibility _visibilityComboBox;
     private Visibility _visibilityCancellationButton;
     private Visibility _visibilityReadyButton;
     private Visibility _visibilityChooseDirectionPanel;
+    private Visibility _visibilityDeleteButton;
     public GameViewModel()
     {
-        PlayerCells = GenerateCells();
-        EnemyCells = GenerateCells();
+        _gameManager = new GameManager();
+        _gameManager.PlayerCellsChanged += OnPlayerCellsChanged;
+        _gameManager.EnemyCellsChanged += OnEnemyCellsChanged;
+        _gameManager.CellUpdated += CellUpdated;
+        PlayerCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.PlayerCells));
+
         ChoiseShipText = _chooseShipText;
         ChangeVisibilityComboBox = Visibility.Visible;
         ChangeVisibilityCancellationButton = Visibility.Collapsed;
         ChangeVisibilityReadyButton = Visibility.Collapsed;
         ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+        ChangeVisibilityDeleteButton = Visibility.Collapsed;
+        CurrentCommandCellButton = AddShipCommand;
 
         AvailableShips = new ObservableCollection<Ship>
         {
-            new Ship("Торпедный катер", 1),
-            new Ship("Торпедный катер", 1),
-            new Ship("Торпедный катер", 1),
-            new Ship("Торпедный катер", 1),
-            new Ship("Эсминец", 2),
-            new Ship("Эсминец", 2),
-            new Ship("Эсминец", 2),
-            new Ship("Крейсер", 3),
-            new Ship("Крейсер", 3),
-            new Ship("Линкор", 4)
+            new Ship(1),
+            new Ship(1),
+            new Ship(1),
+            new Ship(1),
+            new Ship(2),
+            new Ship(2),
+            new Ship(2),
+            new Ship(3),
+            new Ship(3),
+            new Ship(4)
         };
+
     }
+
+    private void OnPlayerCellsChanged()
+    {
+        // Обновление ObservableCollection при изменении списка клеток в GameManager
+        PlayerCells.Clear();
+        foreach (var cell in _gameManager.PlayerCells)
+        {
+            PlayerCells.Add(ConvertToCellViewModel(cell));
+        }
+    }
+    private void OnEnemyCellsChanged()
+    {
+        // Обновление ObservableCollection при изменении списка клеток в GameManager
+        EnemyCells.Clear();
+        foreach (var cell in _gameManager.EnemyCells)
+        {
+            EnemyCells.Add(ConvertToCellViewModel(cell));
+        }
+    }
+
+    private void CellUpdated(Cell cell)
+    {
+        // Найти соответствующую клетку в ObservableCollection<CellViewModel>
+        var cellViewModel = PlayerCells.FirstOrDefault(c => c.Row == cell.Row && c.Column == cell.Column);
+        if (cellViewModel != null)
+            cellViewModel.State = cell.State;
+    }
+
+    private CellViewModel ConvertToCellViewModel(Cell cellModel)
+    {
+        CellViewModel cellViewModel = new CellViewModel(cellModel.Row, cellModel.Column, cellModel.State);
+        return cellViewModel;
+    }
+
+    private IEnumerable<CellViewModel> ConvertToCellViewModels(IEnumerable<Cell> cellModels)
+    {
+        var cellViewModels = new List<CellViewModel>();
+
+        foreach (var cellModel in cellModels)
+        {
+            var cellViewModel = ConvertToCellViewModel(cellModel);
+            cellViewModels.Add(cellViewModel);
+        }
+
+        return cellViewModels;
+    }
+
 
     public ObservableCollection<Ship> AvailableShips
     {
@@ -78,11 +135,16 @@ public class GameViewModel : ViewModelBase
         {
             _selectedShip = value;
             OnPropertyChange(nameof(SelectedShip));
-            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
-            ChangeVisibilityComboBox = Visibility.Collapsed;
-            ChangeVisibilityCancellationButton = Visibility.Collapsed;
-            ChangeVisibilityChooseDirectionPanel = Visibility.Visible;
-            ChangeVisibilityReadyButton = Visibility.Collapsed;
+            if(SelectedShip.Size != 1)
+            {
+                ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
+                ChangeVisibilityComboBox = Visibility.Collapsed;
+                ChangeVisibilityCancellationButton = Visibility.Collapsed;
+                ChangeVisibilityChooseDirectionPanel = Visibility.Visible;
+                ChangeVisibilityReadyButton = Visibility.Collapsed;
+                ChangeVisibilityDeleteButton = Visibility.Collapsed;
+            }
+            
         }
     }
 
@@ -118,6 +180,17 @@ public class GameViewModel : ViewModelBase
         }
 
     }
+
+    public Visibility ChangeVisibilityDeleteButton
+    {
+        get { return _visibilityDeleteButton; }
+        set
+        {
+            _visibilityDeleteButton = value;
+            OnPropertyChange(nameof(ChangeVisibilityDeleteButton));
+        }
+
+    }
     public Visibility ChangeVisibilityChooseDirectionPanel
     {
         get { return _visibilityChooseDirectionPanel; }
@@ -127,6 +200,16 @@ public class GameViewModel : ViewModelBase
             OnPropertyChange(nameof(ChangeVisibilityChooseDirectionPanel));
         }
 
+    }
+    private ICommand _currentCommandCellButton;
+    public ICommand CurrentCommandCellButton
+    {
+        get { return _currentCommandCellButton; }
+        set
+        {
+            _currentCommandCellButton = value;
+            OnPropertyChange(nameof(CurrentCommandCellButton));
+        }
     }
 
     private ShipDirection _currentDirection;
@@ -141,6 +224,7 @@ public class GameViewModel : ViewModelBase
             ChangeVisibilityComboBox = Visibility.Collapsed;
             ChangeVisibilityCancellationButton = Visibility.Visible;
             ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+            ChangeVisibilityDeleteButton = Visibility.Collapsed;
         }
     }
 
@@ -171,7 +255,6 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    // CancellationChoiseCommand
     private RelayCommand _cancelleration;
     public RelayCommand CancellationChoiseCommand
     {
@@ -228,6 +311,39 @@ public class GameViewModel : ViewModelBase
         }
     }
 
+    private RelayCommand _deleteShip;
+    public RelayCommand DeleteShipCommand
+    {
+        get
+        {
+            return _deleteShip ?? (_deleteShip = new RelayCommand(
+                _execute => {
+                    CurrentCommandCellButton = DeleteShipFromCellCommand;
+                    ChoiseShipText = _chooseShipText;
+                    ChangeVisibilityDeleteButton = Visibility.Collapsed;
+                    ChangeVisibilityComboBox = Visibility.Collapsed;
+
+                },
+                _canExecute => true
+            ));
+        }
+    }
+    private RelayCommand _deleteShipFromCell;
+    public RelayCommand DeleteShipFromCellCommand
+    {
+        get
+        {
+            return _deleteShipFromCell ?? (_deleteShipFromCell = new RelayCommand(
+                _execute => {
+                    DeleteShip(CellClicked((string)_execute));
+                    CurrentCommandCellButton = AddShipCommand;
+                },
+                _canExecute => true
+            ));
+        }
+    }
+
+
     private CellViewModel CellClicked(object parameter)
     {
         string cellPosition = (string)parameter;
@@ -242,22 +358,6 @@ public class GameViewModel : ViewModelBase
         return cell;
     }
 
-    //в класс Game
-    private ObservableCollection<CellViewModel> GenerateCells()
-    {
-        var cells = new ObservableCollection<CellViewModel>();
-
-        for (int i = 0; i < 10; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                var cell = new CellViewModel(i, j);
-                cells.Add(cell);
-            }
-        }
-
-        return cells;
-    }
 
     private void AddShip(CellViewModel cell)
     {
@@ -265,25 +365,49 @@ public class GameViewModel : ViewModelBase
         {
             if (SelectedShip == null)
                 throw new Exception("Выберите тип корабля!");
-            int shipSize = (int)SelectedShip.Size;
             ShipDirection direction = CurrentDirection;
+            _gameManager.AddShipToCells(cell.Row, cell.Column, SelectedShip, direction);
 
-            // Проверить, есть ли достаточно свободных клеток для размещения корабля в указанном направлении
-            if (!CanPlaceShip(cell, shipSize, direction))
-                throw new Exception("Здесь нельзя разместить корабль данного типа!");
-            // Разместить корабль на игровом поле
-            PlaceShip(cell, shipSize, direction);
             AvailableShips.Remove(SelectedShip);
             ChoiseShipText = _chooseShipText;
             ChangeVisibilityComboBox = Visibility.Visible;
             ChangeVisibilityCancellationButton = Visibility.Collapsed;
             ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+
+            if(AvailableShips.Count != 10)
+                ChangeVisibilityDeleteButton = Visibility.Visible;
         }
         catch (Exception ex)
         {
             MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private void DeleteShip(CellViewModel cell)
+    {
+        try
+        {
+            if (cell.State == CellState.Empty)
+                throw new Exception("Выберите корабль!");
+
+            ShipDirection direction = CurrentDirection;
+            Ship deletedShip = _gameManager.DeleteShipFromCells(cell.Row, cell.Column);
+
+            AvailableShips.Add(deletedShip);
+            ChoiseShipText = _chooseShipText;
+            ChangeVisibilityComboBox = Visibility.Visible;
+            ChangeVisibilityCancellationButton = Visibility.Collapsed;
+            ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
+
+            if (AvailableShips.Count != 10)
+                ChangeVisibilityDeleteButton = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
 
     private void CheckShipsCollection()
     {
@@ -294,149 +418,8 @@ public class GameViewModel : ViewModelBase
             ChangeVisibilityCancellationButton = Visibility.Collapsed;
             ChangeVisibilityChooseDirectionPanel = Visibility.Collapsed;
             ChangeVisibilityReadyButton = Visibility.Visible;
+            ChangeVisibilityDeleteButton = Visibility.Visible;
         }
     }
 
-    //в класс Game
-    private bool CanPlaceShip(CellViewModel startCell, int shipSize, ShipDirection direction)
-    {
-        int row = startCell.Row;
-        int column = startCell.Column;
-
-        if(shipSize == 1)
-        {
-            if(!CheckRightAndLeftBorders(row, column, shipSize) || 
-                !CheckUpperAndLowerBorders(row, column, shipSize))
-                return false;
-        }
-        else if (direction == ShipDirection.Horizontal)
-        {
-            if (CheckRightAndLeftBorders(row, column, shipSize))
-                for (int i = 0; i < shipSize; i++)
-                {
-                    CellViewModel cell = FindCell(row, column + i);
-                    if (!CheckCell(cell) || !CheckLowerAndUpperCell(cell))
-                        return false;
-                }
-            else
-                return false;
-        }
-        else if (direction == ShipDirection.Vertical)
-        {
-            if (CheckUpperAndLowerBorders(row, column, shipSize))
-                for (int i = 0; i < shipSize; i++)
-                {
-                    CellViewModel cell = FindCell(row + i, column);
-                    if (!CheckCell(cell) || !CheckRightAndLeftCell(cell))
-                        return false;
-                }
-            else
-                return false;
-        }
-        return true;
-    }
-
-    private bool CheckRightAndLeftBorders(int row, int column, int shipSize)
-    {
-        if (column + shipSize > 10)
-            return false;
-
-        CellViewModel leftCell = FindCell(row, column - 1);
-        if (!CheckCell(leftCell))
-            return false;
-        else if (!CheckLowerAndUpperCell(leftCell))
-            return false;
-
-
-        CellViewModel rightCell = FindCell(row, column + shipSize);
-        if (!CheckCell(leftCell))
-            return false;
-        else if (!CheckLowerAndUpperCell(rightCell))
-            return false;
-        return true;
-    }
-
-    private bool CheckUpperAndLowerBorders(int row, int column, int shipSize)
-    {
-        if (row + shipSize > 10)
-            return false;
-
-        CellViewModel lowerCell = FindCell(row - 1, column);
-        if (!CheckCell(lowerCell))
-            return false;
-        else if (!CheckRightAndLeftCell(lowerCell))
-            return false;
-
-        CellViewModel rightCell = FindCell(row + shipSize, column);
-        if (!CheckCell(rightCell))
-            return false;
-        else if (!CheckRightAndLeftCell(rightCell))
-            return false;
-        return true;
-    }
-    private bool CheckLowerAndUpperCell(CellViewModel cell)
-    {
-        if (cell == null)
-            return true;
-        if (!CheckCell(FindCell(cell.Row + 1, cell.Column)) || 
-            !CheckCell(FindCell(cell.Row - 1, cell.Column)))
-            return false;
-        else
-            return true;
-    }
-
-    private bool CheckRightAndLeftCell(CellViewModel cell)
-    {
-        if (cell == null)
-            return true;
-        if (!CheckCell(FindCell(cell.Row, cell.Column + 1)) ||
-            !CheckCell(FindCell(cell.Row, cell.Column - 1)))
-            return false;
-        else
-            return true;
-    }
-
-    private bool CheckCell(CellViewModel cell)
-    {
-        if (cell == null || cell.State == CellState.Empty)
-            return true;
-        else
-            return false;
-    }
-
-    private CellViewModel FindCell(int row, int col)
-    {
-        bool cellExists = true;
-        if (row < 0 || col < 0)
-            cellExists = false;
-        if (cellExists == false)
-            return null;
-
-        CellViewModel cell = PlayerCells.FirstOrDefault(c => c.Row == row && c.Column == col);
-        return cell;
-    }
-    private void PlaceShip(CellViewModel startCell, int shipSize, ShipDirection direction)
-    {
-        int row = startCell.Row;
-        int column = startCell.Column;
-
-        if (direction == ShipDirection.Horizontal)
-        {
-            for (int i = 0; i < shipSize; i++)
-            {
-                var cell = PlayerCells.FirstOrDefault(c => c.Row == row && c.Column == column + i);
-                if (cell != null)
-                    cell.State = CellState.Ship;
-            }
-        }
-        else // ShipDirection.Vertical
-        {
-            for (int i = 0; i < shipSize; i++)
-            {
-                var cell = PlayerCells.FirstOrDefault(c => c.Row == row + i && c.Column == column);
-                if (cell != null)
-                    cell.State = CellState.Ship;
-            }
-        }
-    }
 }

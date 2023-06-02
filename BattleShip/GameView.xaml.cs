@@ -34,6 +34,7 @@ public partial class GameView : Window
         InitializeComponent();
     }
 
+
     private void ViewMessageBoxRequest(object sender, MessageBoxEventArgs e)
     {
         e.Show();

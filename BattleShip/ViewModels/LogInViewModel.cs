@@ -44,6 +44,11 @@ public class LogInViewModel:ViewModelBase
     private string _connectToExistingGameRoom = "Connect to existing game room: ";
     private string _waitingText = "Ожидаем противника...";
     private string _opponentConnectedText = "Противник найден. Можно начинать игру!";
+    private string _manual = "Перед началом игры необходимо расставить корабли.\n" +
+        "Всего есть несколько типов кораблей с определенным размером. Ознакомиться с ними можно будет в предложенном списке.\n\n" +
+        "Обратите внимание!\n" +
+        "При выборе горизонтального положения корабль будет размещаться от нажатой клетки вправо на указанный размер.\n" +
+        "При выборе вертикального - вниз.";
 
 
     public LogInViewModel()
@@ -186,6 +191,7 @@ public class LogInViewModel:ViewModelBase
         try
         {
             OpenNewView(new GameView(new GameViewModel()));
+            MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
             Close?.Invoke();
         }
         catch (Exception ex)

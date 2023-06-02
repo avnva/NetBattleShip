@@ -7,7 +7,11 @@ using System.Threading.Tasks;
 namespace BattleShip;
 public class Ship
 {
-    public string Name { get; set; } // Название корабля
+    private string _name;
+    public string Name { 
+        get { return _name; }
+        set { _name = value; } 
+    } 
     public int Size { get; set; } // Размер корабля (количество клеток, которые он занимает)
     public int Hits { get; set; } // Количество попаданий по кораблю
 
@@ -15,10 +19,19 @@ public class Ship
 
     public bool IsSunk => Hits == Size; // Свойство, указывающее, потоплен ли корабль
 
-    public Ship(string name, int size)
+    public Ship(int size)
     {
-        Name = name;
         Size = size;
+        if (Size == 1)
+            _name = "Торпедный катер";
+        else if (Size == 2)
+            _name = "Эсминец";
+        else if (Size == 3)
+            _name = "Крейсер";
+        else if (Size == 4)
+            _name = "Линкор";
+        else
+            throw new ArgumentException("Неверный размер корабля.");
         Hits = 0;
     }
 

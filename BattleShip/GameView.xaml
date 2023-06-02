@@ -58,7 +58,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border BorderBrush="#1E2460" BorderThickness="2">
-                        <Button Command="{Binding DataContext.AddShipCommand, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
+                        <Button Command="{Binding DataContext.CurrentCommandCellButton, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
                                 Background="{Binding CellColor}"
                                 CommandParameter="{Binding RelativeSource={RelativeSource Self}, Path=Tag}"
                                 Width="50" Height="50">
@@ -160,6 +160,14 @@
                     Visibility="{Binding ChangeVisibilityReadyButton}" 
                     Grid.Column="1" Grid.Row="3" 
                     Height="40" Width="215" Margin="0,35,0,0"/>
+        
+        <Button x:Name="DeleteShip"
+                    Content="Удалить" 
+                    Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
+                    Command="{Binding DeleteShipCommand}"
+                    Visibility="{Binding ChangeVisibilityDeleteButton}" 
+                    Grid.Column="1" Grid.Row="3" 
+                    Height="40" Width="215" Margin="0,89,0,0"/>
 
         <Button x:Name="Cancellation"
                     Content="Отмена" 

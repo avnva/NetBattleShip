@@ -18,8 +18,8 @@ public class CellViewModel : ViewModelBase
 {
     private CellState _state;
 
-    public int Row { get; }
-    public int Column { get; }
+    public int Row { get; set; }
+    public int Column { get; set; }
 
     public CellState State
     {
@@ -41,10 +41,10 @@ public class CellViewModel : ViewModelBase
         }
     }
 
-    public CellViewModel(int row, int column)
+    public CellViewModel(int row, int column, CellState state)
     {
         Row = row;
         Column = column;
-        State = CellState.Empty;
+        State = state;
     }
 }
