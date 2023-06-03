@@ -99,10 +99,16 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border BorderBrush="#1E2460" BorderThickness="2">
-                        <Button Command="{Binding AddShipCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                CommandParameter="{Binding}"
-                                Background="{Binding CellColor}"
-                                Width="50" Height="50">
+                        <Button Command="{Binding DataContext.CurrentCommandEnemyCellButton, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}, Path=Tag}"
+                                Width="50" Height="50"
+                                Background="{Binding CellColor}">
+                            <Button.Tag>
+                                <MultiBinding Converter="{StaticResource CellPositionConverter}">
+                                    <Binding Path="Row" />
+                                    <Binding Path="Column" />
+                                </MultiBinding>
+                            </Button.Tag>
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -128,7 +134,7 @@
             </Grid.RowDefinitions>
             <Label Style="{StaticResource LabelStyle}"
                        FontSize ="18"
-                       Content="{Binding ChoiseShipText}"
+                       Content="{Binding CurrentTextStateLabel}"
                        HorizontalAlignment="Center"
                        HorizontalContentAlignment="Center"
                        VerticalContentAlignment="Top"
@@ -203,6 +209,14 @@
                 Content="Вертикальное" 
                 GroupName="ShipDirection"/>
         </StackPanel>
+        <Label Style="{StaticResource LabelStyle}"
+                       FontSize ="18"
+                       Content="Ждём противника..."
+                       HorizontalAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       VerticalContentAlignment="Top"
+                       Visibility="{Binding ChangeVisibilityWaitOpponentText}"
+                       Width="275" Grid.Row="2" Grid.Column="1"/>
 
     </Grid>
 </Window>

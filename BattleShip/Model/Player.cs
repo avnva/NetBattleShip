@@ -180,6 +180,15 @@ public class Player
             case RequestType.Port:
                 return new Response(RequestType.Port,
                     await GetStringResponseAsync(buffer, bytesRead));
+            case RequestType.StartGame:
+                return new Response(RequestType.StartGame,
+                    GetBoolResponseAsync(buffer));
+            case RequestType.CheckOpponentCell:
+                return new Response(RequestType.CheckOpponentCell,
+                    await GetStringResponseAsync(buffer, bytesRead));
+            case RequestType.OpponentMove:
+                return new Response(RequestType.OpponentMove,
+                    await GetStringResponseAsync(buffer, bytesRead));
             default:
                 throw new ApplicationException("Invalid signature!");
         }

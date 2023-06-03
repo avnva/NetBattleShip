@@ -270,7 +270,6 @@ public class LogInViewModel:ViewModelBase
                     if (response.Flag)
                     {
                         OpenNewView(new GameView(new GameViewModel(_player)));
-                        //_player.StartCheckingOpponent();
                         MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
                         Close?.Invoke();
                     }

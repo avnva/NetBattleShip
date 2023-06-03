@@ -22,6 +22,16 @@ public class GameRoomManager
     //    else
     //        return false;
     //}
+    public bool IsFirstPlayer(TcpClient client, Port port)
+    {
+        GameRoom room = FindGameRoom(port);
+        if (!room.IsFirstPlayerSet)
+        {
+            room.SetFirstPlayer();
+            return true;
+        }
+        return false;   
+    }
 
     public void AddPlayerToExistsRoom(TcpClient player, Port port)
     {

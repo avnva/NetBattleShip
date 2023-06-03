@@ -1,29 +1,69 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
 using Xceed.Wpf.Toolkit;
 
 namespace BattleShip.Model;
-
+public enum HitState
+{
+    Kill,
+    Hit,
+    Miss
+}
 public class GameManager
 {
     private List<Cell> _playerCells;
     private List<Cell> _enemyCells;
+    private List<Ship> _availableShips;
     private Cell _cell;
     private Player _player;
+    private RequestParser _requestParser;
+    public int Score;
 
     public event Action PlayerCellsChanged;
     public event Action EnemyCellsChanged;
+    public event Action AvailableShipsChanged;
     public delegate void CellUpdatedEventHandler(Cell cell);
     public event CellUpdatedEventHandler CellUpdated;
+    public delegate void EnemyCellUpdatedEventHandler(Cell cell);
+    public event EnemyCellUpdatedEventHandler EnemyCellUpdated;
+    public delegate void AvailableShipsUpdatedEventHandler(Ship ship);
+
+    private string _hitsCellRequest = "Hits cell:";
+    private string _waitCellForCheckRequest = "Wait opponent...";
+    private string _cellStateRequest = "Cell state:";
 
     public GameManager(Player player)
     {
         // Инициализация списка клеток игрока
+        _requestParser = new RequestParser();
         _player = player;
         PlayerCells = GenerateCells();
+        AvailableShips = GenerateShips();
+    }
+
+    private List<Ship> GenerateShips()
+    {
+        var AvailableShips = new List<Ship>
+        {
+            new Ship(3)
+            //new Ship(1),
+            //new Ship(1),
+            //new Ship(1),
+            //new Ship(2),
+            //new Ship(2),
+            //new Ship(2),
+            //new Ship(3),
+            //new Ship(3),
+            //new Ship(4)
+        };
+        return AvailableShips;
     }
     public void GenerateEnemyField()
     {
@@ -45,6 +85,16 @@ public class GameManager
 
         return cells;
     }
+    public List<Ship> AvailableShips
+    {
+        get { return _availableShips; }
+        set
+        {
+            _availableShips = value;
+            OnAvailableShipsChanged();
+        }
+    }
+
     public List<Cell> PlayerCells
     {
         get { return _playerCells; }
@@ -81,11 +131,18 @@ public class GameManager
     {
         EnemyCellsChanged?.Invoke();
     }
-
+    protected virtual void OnAvailableShipsChanged()
+    {
+        AvailableShipsChanged?.Invoke();
+    }
 
     private void UpdateCell(Cell cell)
     {
         CellUpdated?.Invoke(cell);
+    }
+    private void UpdateEnemyCell(Cell cell)
+    {
+        EnemyCellUpdated?.Invoke(cell);
     }
 
     public void AddShipToCells(int row, int column, Ship ship, ShipDirection direction)
@@ -96,6 +153,8 @@ public class GameManager
             throw new Exception("Здесь нельзя разместить корабль данного типа!");
         // Разместить корабль на игровом поле
         PlaceShip(cell, shipSize, direction);
+        AvailableShips.Remove(ship);
+        OnAvailableShipsChanged();
     }
 
     private bool CanPlaceShip(Cell startCell, int shipSize, ShipDirection direction)
@@ -239,7 +298,7 @@ public class GameManager
         }
     }
 
-    public Ship DeleteShipFromCells(int row, int column)
+    public void DeleteShipFromCells(int row, int column)
     {
         Cell cell = _playerCells.FirstOrDefault(c => c.Row == row && c.Column == column);
         ShipDirection shipDirection = DeterminingDirection(cell);
@@ -248,7 +307,8 @@ public class GameManager
         Ship ship = new Ship(shipSize);
         // Разместить корабль на игровом поле
         DeleteShip(firstCell, shipSize, shipDirection);
-        return ship;
+        AvailableShips.Add(ship);
+        OnAvailableShipsChanged();
     }
 
     private void DeleteShip(Cell startCell, int shipSize, ShipDirection direction)
@@ -353,5 +413,100 @@ public class GameManager
             return true;
         else
             return false;
+    }
+
+    public async Task<HitState> HitCell(int row, int column)
+    {
+        _player.StopCheckingOpponent();
+        Cell cell = _enemyCells.FirstOrDefault(c => c.Row == row && c.Column == column);
+        Response response = await _player.SendRequestAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+        HitState state = GetCellStateFromResponse(response.Contents);
+        _player.StartCheckingOpponent();
+        if (state == HitState.Kill)
+        {
+            cell.State = CellState.Hit;
+            Score++;
+        }
+        else if(state == HitState.Hit)   
+            cell.State = CellState.Hit;
+        else if (state == HitState.Miss)
+            cell.State = CellState.Miss;
+        UpdateEnemyCell(cell);
+        return state;
+    }
+
+    public async Task OpponentMove()
+    {
+        _player.StopCheckingOpponent();
+        Response response = await _player.SendRequestAsync(_requestParser.Parse(_waitCellForCheckRequest));
+        Cell checkedCell = GetCellFromResponse(response.Contents);
+
+        if(checkedCell.State == CellState.Ship)
+        {
+            checkedCell.State = CellState.Hit;
+            ShipDirection shipDirection = DeterminingDirection(checkedCell);
+            Cell firstCell = FindFirstCell(checkedCell, shipDirection);
+            int shipSize = DeterminingShipSize(firstCell, shipDirection) - 1;
+            if (shipSize == 0)
+                await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
+            else
+                await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Hit.ToString()));
+        }
+        else
+        {
+            checkedCell.State = CellState.Miss;
+            await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Miss.ToString()));
+        }
+        UpdateCell(checkedCell);
+        _player.StartCheckingOpponent();
+    }
+
+    private Cell GetCellFromResponse(string response)
+    {
+        // Паттерн регулярного выражения для извлечения значения row и column
+        string pattern = @"row:\s*(\d+)\s*column:\s*(\d+)";
+
+        // Поиск совпадений в строке response
+        Match match = Regex.Match(response, pattern);
+
+        if (match.Success)
+        {
+            // Получение значений row и column из совпадений
+            int row = int.Parse(match.Groups[1].Value);
+            int column = int.Parse(match.Groups[2].Value);
+            Cell cell = _playerCells.FirstOrDefault(c => c.Row == row && c.Column == column);
+            return cell;
+        }
+        else
+        {
+            throw new ArgumentException("Invalid response format");
+        }
+    }
+
+    private HitState GetCellStateFromResponse(string response)
+    {
+        // Проверка наличия подстроки "Cell state: " в ответе
+        if (response.Contains("Cell state:"))
+        {
+            // Получение значения CellState
+            string cellStateString = response.Substring(response.IndexOf("Cell state: ") + 12).Trim();
+
+            // Преобразование значения CellState в соответствующий перечислитель
+            switch (cellStateString.ToLower())
+            {
+                case "kill":
+                    return HitState.Kill;
+                case "hit":
+                    return HitState.Hit;
+                case "miss":
+                    return HitState.Miss;
+                default:
+                    throw new ArgumentException("Invalid cell state");
+            }
+        }
+        else
+        {
+            throw new ArgumentException("Invalid response format");
+        }
     }
 }

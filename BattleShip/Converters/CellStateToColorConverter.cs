@@ -17,10 +17,12 @@ public class CellStateToColorConverter : IValueConverter
                 case CellState.Empty:
                     return Brushes.White; // Цвет для пустой клетки
                 case CellState.Ship:
-                    
                     Brush customBrush = (Brush)converter.ConvertFrom("#1a153f");
                     return customBrush; // Цвет для занятой клетки (корабль)
-                // Добавьте другие состояния и соответствующие цвета
+                case CellState.Hit:
+                    return Brushes.Red;
+                case CellState.Miss:
+                    return Brushes.DarkGreen;
                 default:
                     return Brushes.Transparent;
             }

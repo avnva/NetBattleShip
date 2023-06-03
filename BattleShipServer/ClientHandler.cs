@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace BattleShipServer;
 
@@ -20,10 +16,12 @@ public class ClientHandler : IDisposable
 
     public event Func<TcpClient, int, Task> GetExistingPortRequested;
     public event Func<TcpClient, Task> GetNewPortRequested;
-    //public event Func<TcpClient, Task> CheckOnlineOpponent;
+    public event Func<Port, TcpClient, Task> StartGameRequested;
     public event Func<Port, TcpClient, Task> CheckOnline;
     public event Func<Port, TcpClient, Task> CreateNewGameRequested;
     public event Action<Port, TcpClient> DisconnectRequest;
+    public event Func<Port, TcpClient, string, Task> SendCoordinateToOpponentRequested;
+    public event Func<Port, TcpClient, string, Task> SendCellStateToOpponentRequested;
 
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
@@ -63,6 +61,7 @@ public class ClientHandler : IDisposable
             Disconnect();
         }
     }
+
 
     private async Task GetRequest(byte[] buffer, StringBuilder request)
     {
@@ -112,6 +111,17 @@ public class ClientHandler : IDisposable
                     _isActiv = false;
                     Disconnect();
                     break;
+                case RequestType.StartGame:
+                    await StartGame();
+                    break;
+                case RequestType.CheckOpponentCell:
+                    await SendCoordinateMessage(request);
+                    break;
+                case RequestType.CellState:
+                    await SendStateMessage(request);
+                    break;
+                case RequestType.OpponentMove:
+                    break;
                 default:
                     throw new ApplicationException("Wrong signature!");
             }
@@ -121,7 +131,28 @@ public class ClientHandler : IDisposable
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
     }
+    private async Task SendStateMessage(string request)
+    {
+        if (SendCellStateToOpponentRequested != null)
+            await SendCellStateToOpponentRequested.Invoke(port, client, request);
+        else
+            throw new ArgumentNullException(nameof(SendCellStateToOpponentRequested));
+    }
+    private async Task SendCoordinateMessage(string request)
+    {
+        if (SendCoordinateToOpponentRequested != null)
+            await SendCoordinateToOpponentRequested.Invoke(port, client, request);
+        else
+            throw new ArgumentNullException(nameof(SendCoordinateToOpponentRequested));
+    }
 
+    private async Task StartGame()
+    {
+        if (StartGameRequested != null)
+            await StartGameRequested.Invoke(port, client);
+        else
+            throw new ArgumentNullException(nameof(StartGameRequested));
+    }
     private async Task CreateNewGame()
     {
         if (CreateNewGameRequested != null)
@@ -138,9 +169,9 @@ public class ClientHandler : IDisposable
             throw new ArgumentNullException(nameof(CheckOnline));
     }
 
-    private string GetPortFromRequest(string reguest) 
+    private string GetPortFromRequest(string request) 
     {
-        string result = Regex.Replace(reguest, @"[^\d]", "");
+        string result = Regex.Replace(request, @"[^\d]", "");
         return result;
     }
     private void Disconnect()

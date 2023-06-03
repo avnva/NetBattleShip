@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 
 namespace BattleShipServer;
 
@@ -52,16 +53,16 @@ public class TCPServer
     {
         if (roomManager.CheckPlayersConnection(port))
         {
-            await SendMessage(client, true, RequestType.CreateNewGame);
+            await SendBoolMessage(client, true, RequestType.CreateNewGame);
             TcpClient opponent = roomManager.GetOpponent(client, port);
             if (opponent == client)
                 throw new Exception("Error");
-            await SendMessage(opponent, true, RequestType.WaitingOpponent);
+            await SendBoolMessage(opponent, true, RequestType.WaitingOpponent);
             _logger.Log($" >> Start new game on port {port.PortValue}");
         }
         else
         {
-            await SendMessage(client, false, RequestType.CreateNewGame);
+            await SendBoolMessage(client, false, RequestType.CreateNewGame);
             _logger.Log($" >> Error");
         }
     }
@@ -81,6 +82,9 @@ public class TCPServer
         if(type == RequestType.Port)
             clientHandler.CreateNewGameRequested += CreateNewGame;
         clientHandler.DisconnectRequest += Disconnect;
+        clientHandler.StartGameRequested += HandleStartGame;
+        clientHandler.SendCoordinateToOpponentRequested += SendCoordinateToOpponent;
+        clientHandler.SendCellStateToOpponentRequested += SendStateToOpponent;
         return cl;
     }
 
@@ -95,11 +99,21 @@ public class TCPServer
         _logger.Log($" >> Client connected to new game room");
         
     }
+    private async Task HandleStartGame(Port port, TcpClient client)
+    {
+        TcpClient opponent = roomManager.GetOpponent(client, port);
+        if (opponent == client)
+            throw new Exception("Error");
+        if (roomManager.IsFirstPlayer(client, port))
+            await SendBoolMessage(opponent, false, RequestType.StartGame);
+        else
+            await SendBoolMessage(opponent, true, RequestType.StartGame);
+    }
 
     private async Task CheckOnline(Port port, TcpClient client) 
     {
         bool opponentConnect = roomManager.CheckPlayersConnection(port);
-        await SendMessage(client, opponentConnect, RequestType.Online);
+        await SendBoolMessage(client, opponentConnect, RequestType.Online);
         if (opponentConnect)
              _logger.Log($" >> Server sent: opponent is found");
         else
@@ -127,8 +141,34 @@ public class TCPServer
             //_logger.Log($" >> Server sent: connection successful");
         }
     }
+    private async Task SendCoordinateToOpponent(Port port, TcpClient client, string message)
+    {
+        TcpClient opponent = roomManager.GetOpponent(client, port);
+        if (opponent == client)
+            throw new Exception("Error");
+        await SendStringMessage(opponent, message, RequestType.OpponentMove);
+        _logger.Log($" >> Server sent coordinate");
+    }
+    private async Task SendStateToOpponent(Port port, TcpClient client, string message)
+    {
+        TcpClient opponent = roomManager.GetOpponent(client, port);
+        if (opponent == client)
+            throw new Exception("Error");
+        await SendStringMessage(opponent, message, RequestType.CheckOpponentCell);
+        _logger.Log($" >> Server sent cell state");
+    }
+    private async Task SendStringMessage(TcpClient client, string value, RequestType type)
+    {
+        NetworkStream networkStream = client.GetStream();
+        byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
 
-    private async Task SendMessage(TcpClient client, bool value, RequestType type)
+        responseBytes[0] = (byte)type;
+        Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
+
+        await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+        await networkStream.FlushAsync();
+    }
+    private async Task SendBoolMessage(TcpClient client, bool value, RequestType type)
     {
         NetworkStream networkStream = client.GetStream();
         //byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
@@ -201,7 +241,7 @@ public class TCPServer
             TcpClient opponent = roomManager.GetOpponent(client, port);
             if (opponent != client)
             {
-                SendMessage(opponent, false, RequestType.Online);
+                SendBoolMessage(opponent, false, RequestType.Online);
                 _logger.Log($" >> Server sent: opponent disconnected");
             }   
         }

@@ -15,7 +15,9 @@ public enum RequestType : byte
     Online = 4,
     Ping = 5,
     Disconnect = 6,
-    Exception = 7
-
-
+    Exception = 7,
+    StartGame = 8,
+    CheckOpponentCell = 9,
+    OpponentMove = 10,
+    CellState = 11
 }

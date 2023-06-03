@@ -13,6 +13,7 @@ public class GameRoom
     public bool IsGameStarted { get; set; }
     public Port Port { get; set; }
     private int _maxPlayers = 2;
+    public bool IsFirstPlayerSet;
     public GameRoom(Port port)
     {
         players = new List<TcpClient>();
@@ -38,6 +39,8 @@ public class GameRoom
     {
         return players.Count == 0;
     }
-
-
+    public void SetFirstPlayer()
+    {
+        IsFirstPlayerSet = true;
+    }
 }

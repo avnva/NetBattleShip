@@ -28,6 +28,7 @@ public class GameViewModel : ViewModelBase
     private Ship _selectedShip;
     private GameManager _gameManager;
     private Player _player;
+    private RequestParser _requestParser;
 
     private string _chooseShipText = "Выберите корабль:";
     private string _selectedShipText = "Выбран корабль: ";
@@ -35,6 +36,13 @@ public class GameViewModel : ViewModelBase
     private string _shipsAreOverText = "Все корабли расставлены!";
     private string _opponentOnlineText = "Противник онлайн";
     private string _opponentOfflineText = "Противник офлайн...";
+    private string _yourTurnText = "Ваш ход!\nВыберите клетку\nна поле соперника";
+    private string _opponentTurnText = "Ход соперника...";
+    private string _manual = "Суть игры заключается в том, что необходимо уничтожить все корабли соперника, прежде чем он уничтожит Ваши.\n" +
+        "Игроки ходят по очереди. При попадании в корабль соперника дается дополнительный ход.\n\n" +
+        "Успехов!\n";
+
+    private string _startGameRequest = "Start game";
 
 
     private Visibility _visibilityComboBox;
@@ -42,35 +50,28 @@ public class GameViewModel : ViewModelBase
     private Visibility _visibilityReadyButton;
     private Visibility _visibilityChooseDirectionPanel;
     private Visibility _visibilityDeleteButton;
+    private Visibility _visibilityWaitOpponentText;
     public GameViewModel(Player player)
     {
         _player = player;
         _gameManager = new GameManager(_player);
+        _requestParser = new RequestParser();
         _gameManager.PlayerCellsChanged += OnPlayerCellsChanged;
         _gameManager.EnemyCellsChanged += OnEnemyCellsChanged;
         _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
         _gameManager.CellUpdated += CellUpdated;
+        _gameManager.EnemyCellUpdated += EnemyCellUpdated;
+        _gameManager.AvailableShipsChanged += OnAvailableShipsChanged;
         PlayerCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.PlayerCells));
         EnemyCells = new ObservableCollection<CellViewModel>();
+        AvailableShips = new ObservableCollection<Ship>(_gameManager.AvailableShips);
 
-        ChoiseShipText = _chooseShipText;
+        CurrentTextStateLabel = _chooseShipText;
         HideControls();
         ChangeVisibilityComboBox = Visibility.Visible;
         CurrentCommandCellButton = AddShipCommand;
-
-        AvailableShips = new ObservableCollection<Ship>
-        {
-            new Ship(1),
-            new Ship(1),
-            new Ship(1),
-            new Ship(1),
-            new Ship(2),
-            new Ship(2),
-            new Ship(2),
-            new Ship(3),
-            new Ship(3),
-            new Ship(4)
-        };
+        CurrentCommandEnemyCellButton = HitShipCommand;
+        
 
     }
     private void ChangeStatusOpponentOnline(object sender, EventArgs e)
@@ -103,11 +104,25 @@ public class GameViewModel : ViewModelBase
             EnemyCells.Add(ConvertToCellViewModel(cell));
         }
     }
+    private void OnAvailableShipsChanged()
+    {
+        AvailableShips.Clear();
+        foreach (var ship in _gameManager.AvailableShips)
+        {
+            AvailableShips.Add(ship);
+        }
+    }
 
     private void CellUpdated(Cell cell)
     {
         // Найти соответствующую клетку в ObservableCollection<CellViewModel>
         var cellViewModel = PlayerCells.FirstOrDefault(c => c.Row == cell.Row && c.Column == cell.Column);
+        if (cellViewModel != null)
+            cellViewModel.State = cell.State;
+    }
+    private void EnemyCellUpdated(Cell cell)
+    {
+        var cellViewModel = EnemyCells.FirstOrDefault(c => c.Row == cell.Row && c.Column == cell.Column);
         if (cellViewModel != null)
             cellViewModel.State = cell.State;
     }
@@ -157,13 +172,13 @@ public class GameViewModel : ViewModelBase
     {
         if (SelectedShip != null && SelectedShip.Size != 1)
         {
-            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
+            CurrentTextStateLabel = _selectedShipText + Environment.NewLine + SelectedShip.Name + Environment.NewLine + _chooseDirectionText;
             HideControls();
             ChangeVisibilityChooseDirectionPanel = Visibility.Visible;
         }
         else if(SelectedShip != null && SelectedShip.Size == 1)
         {
-            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name;
+            CurrentTextStateLabel = _selectedShipText + Environment.NewLine + SelectedShip.Name;
             HideControls();
             ChangeVisibilityCancellationButton = Visibility.Visible;
         }
@@ -221,6 +236,17 @@ public class GameViewModel : ViewModelBase
         }
 
     }
+
+    public Visibility ChangeVisibilityWaitOpponentText
+    {
+        get { return _visibilityWaitOpponentText; }
+        set
+        {
+            _visibilityWaitOpponentText = value;
+            OnPropertyChange(nameof(ChangeVisibilityWaitOpponentText));
+        }
+    }
+
     private ICommand _currentCommandCellButton;
     public ICommand CurrentCommandCellButton
     {
@@ -232,6 +258,17 @@ public class GameViewModel : ViewModelBase
         }
     }
 
+    private ICommand _currentCommandEnemyCellButton;
+    public ICommand CurrentCommandEnemyCellButton
+    {
+        get { return _currentCommandEnemyCellButton; }
+        set
+        {
+            _currentCommandEnemyCellButton = value;
+            OnPropertyChange(nameof(CurrentCommandEnemyCellButton));
+        }
+    }
+
     private ShipDirection _currentDirection;
     public ShipDirection CurrentDirection
     {
@@ -240,11 +277,13 @@ public class GameViewModel : ViewModelBase
         {
             _currentDirection = value;
             OnPropertyChange(nameof(CurrentDirection));
-            ChoiseShipText = _selectedShipText + Environment.NewLine + SelectedShip.Name;
+            CurrentTextStateLabel = _selectedShipText + Environment.NewLine + SelectedShip.Name;
             HideControls();
             ChangeVisibilityCancellationButton = Visibility.Visible;
         }
     }
+
+
 
     private ICommand _setDirectionCommand;
     public ICommand SetDirectionCommand => _setDirectionCommand ??= new RelayCommand(SetDirection);
@@ -254,11 +293,11 @@ public class GameViewModel : ViewModelBase
         if (direction is ShipDirection shipDirection)
         {
             CurrentDirection = shipDirection;
-            ChoiseShipText += Environment.NewLine + "Положение: ";
+            CurrentTextStateLabel += Environment.NewLine + "Положение: ";
             if (shipDirection == ShipDirection.Vertical)
-                ChoiseShipText += "вертикально";
+                CurrentTextStateLabel += "вертикально";
             else
-                ChoiseShipText += "горизонтально";
+                CurrentTextStateLabel += "горизонтально";
         }
     }
 
@@ -273,14 +312,14 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    private string _choiseShipText;
-    public string ChoiseShipText
+    private string _currentStateText;
+    public string CurrentTextStateLabel
     {
-        get { return _choiseShipText; }
+        get { return _currentStateText; }
         set
         {
-            _choiseShipText = value;
-            OnPropertyChange(nameof(ChoiseShipText));
+            _currentStateText = value;
+            OnPropertyChange(nameof(CurrentTextStateLabel));
         }
     }
 
@@ -301,7 +340,7 @@ public class GameViewModel : ViewModelBase
     private void CancelChoise()
     {
         HideControls();
-        ChoiseShipText = _chooseShipText;
+        CurrentTextStateLabel = _chooseShipText;
         ChangeVisibilityComboBox = Visibility.Visible;
         if (AvailableShips.Count != 10)
             ChangeVisibilityDeleteButton = Visibility.Visible;
@@ -350,7 +389,7 @@ public class GameViewModel : ViewModelBase
             return _deleteShip ?? (_deleteShip = new RelayCommand(
                 _execute => {
                     CurrentCommandCellButton = DeleteShipFromCellCommand;
-                    ChoiseShipText = _chooseShipText;
+                    CurrentTextStateLabel = _chooseShipText;
                     HideControls();
                 },
                 _canExecute => true
@@ -372,6 +411,21 @@ public class GameViewModel : ViewModelBase
         }
     }
 
+    private RelayCommand _hitShip;
+    public RelayCommand HitShipCommand
+    {
+        get
+        {
+            return _hitShip ?? (_hitShip = new RelayCommand(
+                _execute => {
+                    HitCell(EnemyCellClicked((string)_execute));
+                    //CheckShipsCollection();
+                },
+                _canExecute => true
+            ));
+        }
+    }
+
     private RelayCommand _startGame;
     public RelayCommand StartGameCommand
     {
@@ -387,8 +441,46 @@ public class GameViewModel : ViewModelBase
     }
     private void StartGame()
     {
-        _gameManager.GenerateEnemyField();
-        EnemyCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.EnemyCells));
+        HideControls();
+        ChangeVisibilityWaitOpponentText = Visibility.Visible;
+        CurrentCommandCellButton = null;
+        SendRequest(_startGameRequest);
+    }
+    private async Task SendRequest(string request)
+    {
+        try
+        {
+            request = _requestParser.Parse(request);
+            Response response = await _player.SendRequestAsync(request);
+
+            switch (response.Type)
+            {
+                case RequestType.StartGame:
+                    if (response.Flag)
+                    {
+                        _gameManager.GenerateEnemyField();
+                        EnemyCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.EnemyCells));
+                        HideControls();
+                        CurrentTextStateLabel = _yourTurnText;
+                        MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        HideControls();
+                        CurrentTextStateLabel = _opponentTurnText;
+                        MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await OpponentMove();
+                        _gameManager.GenerateEnemyField();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private CellViewModel CellClicked(object parameter)
@@ -404,6 +496,61 @@ public class GameViewModel : ViewModelBase
         CellViewModel cell = PlayerCells.Single(c => c.Row == row && c.Column == col);
         return cell;
     }
+    private CellViewModel EnemyCellClicked(object parameter)
+    {
+        string cellPosition = (string)parameter;
+
+        // Разбиваем строку позиции клетки для получения строки и столбца
+        string[] parts = cellPosition.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+        int row = int.Parse(parts[0].Trim().Substring(4));
+        int col = int.Parse(parts[1].Trim().Substring(7));
+
+        // Получение соответствующей клетки из массива клеток
+        CellViewModel cell = EnemyCells.Single(c => c.Row == row && c.Column == col);
+        return cell;
+    }
+
+    private async Task OpponentMove()
+    {
+        CurrentCommandEnemyCellButton = null;
+        _gameManager.OpponentMove();
+        CurrentCommandEnemyCellButton = HitShipCommand;
+    }
+    private async Task HitCell(CellViewModel cell)
+    {
+        try
+        {
+            HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
+            if (hitState == HitState.Miss)
+                await OpponentMove();
+
+            //заглушка
+            if (_gameManager.Score == 1)
+            {
+                MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
+                Close?.Invoke();
+            }
+                
+            HideControls();
+            CurrentTextStateLabel = _opponentTurnText;
+            CurrentCommandEnemyCellButton = null;
+            await OpponentMove();
+            //    _gameManager.AddShipToCells(cell.Row, cell.Column, SelectedShip, direction);
+
+            //    CurrentTextStateLabel = _chooseShipText;
+
+            //    HideControls();
+            //    ChangeVisibilityComboBox = Visibility.Visible;
+
+            //    if (AvailableShips.Count != 10)
+            //        ChangeVisibilityDeleteButton = Visibility.Visible;
+            //}
+        }
+        catch (Exception ex)
+        {
+            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
     private void AddShip(CellViewModel cell)
     {
         try
@@ -413,8 +560,7 @@ public class GameViewModel : ViewModelBase
             ShipDirection direction = CurrentDirection;
             _gameManager.AddShipToCells(cell.Row, cell.Column, SelectedShip, direction);
 
-            AvailableShips.Remove(SelectedShip);
-            ChoiseShipText = _chooseShipText;
+            CurrentTextStateLabel = _chooseShipText;
 
             HideControls();
             ChangeVisibilityComboBox = Visibility.Visible;
@@ -436,10 +582,9 @@ public class GameViewModel : ViewModelBase
                 throw new Exception("Выберите корабль!");
 
             ShipDirection direction = CurrentDirection;
-            Ship deletedShip = _gameManager.DeleteShipFromCells(cell.Row, cell.Column);
+            _gameManager.DeleteShipFromCells(cell.Row, cell.Column);
 
-            AvailableShips.Add(deletedShip);
-            ChoiseShipText = _chooseShipText;
+            CurrentTextStateLabel = _chooseShipText;
 
             HideControls();
             ChangeVisibilityComboBox = Visibility.Visible;
@@ -457,7 +602,7 @@ public class GameViewModel : ViewModelBase
     {
         if (AvailableShips.Count == 0)
         {
-            ChoiseShipText = _shipsAreOverText;
+            CurrentTextStateLabel = _shipsAreOverText;
             HideControls();
             ChangeVisibilityReadyButton = Visibility.Visible;
             ChangeVisibilityDeleteButton = Visibility.Visible;
@@ -471,6 +616,7 @@ public class GameViewModel : ViewModelBase
         ChangeVisibilityComboBox = Visibility.Collapsed;
         ChangeVisibilityDeleteButton = Visibility.Collapsed;
         ChangeVisibilityReadyButton = Visibility.Collapsed;
+        ChangeVisibilityWaitOpponentText = Visibility.Collapsed;
     }
 
 }
