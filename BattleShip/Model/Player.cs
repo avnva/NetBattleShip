@@ -93,7 +93,7 @@ public class Player
     private void CheckOnline(object sender, EventArgs e)
     {
         CheckOpponentOnline();
-        OnOpponentOnline();
+        OnOpponentOnline()
     }
     private async Task CheckOpponentOnline()
     {
@@ -178,7 +178,6 @@ public class Player
             case RequestType.Online:
                 return new Response(RequestType.Online, 
                     GetBoolResponseAsync(buffer));
- 
             case RequestType.Port:
                 return new Response(RequestType.Port,
                     await GetStringResponseAsync(buffer, bytesRead));
@@ -186,13 +185,13 @@ public class Player
                 throw new ApplicationException("Invalid signature!");
         }
     }
+
     private bool GetBoolResponseAsync(byte[] buffer)
     {
         buffer = buffer.Skip(1).ToArray();
         bool response = BitConverter.ToBoolean(buffer, 0);
         return response;
     }
-
 
     private async Task<string> GetStringResponseAsync(byte[] buffer, int bytesRead)
     {
@@ -214,13 +213,18 @@ public class Player
 
     public async Task DisconnectAsync()
     {
+        if(_playerSocket != null)
+        {
+            if(ping != null && _timer != null)
+            {
         ping.Interrupt();
         StopCheckingOpponent();
+            }
         await _networkStream.WriteAsync(new[] { (byte)RequestType.Disconnect }, 0, 1);
         await _networkStream.FlushAsync();
         CloseSocket();
     }
-
+    }
     private void CloseSocket()
     {
         _playerSocket.Close();
