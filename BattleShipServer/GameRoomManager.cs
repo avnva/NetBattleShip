@@ -61,18 +61,29 @@ public class GameRoomManager
         return connectionRoom;
     }
 
-    public void RemovePlayerFromGameRoom(GameRoom gameRoom, TcpClient player)
+    public void RemovePlayerFromGameRoom(Port port, TcpClient player)
     {
-        if (gameRoom == null)
-            throw new ArgumentNullException(nameof(gameRoom));
-
-        gameRoom.RemovePlayer(player);
-
-        if (gameRoom.IsEmpty())
-            RemoveGameRoom(gameRoom);
+        GameRoom room = FindGameRoom(port);
+        if (room != null)
+        {
+            room.RemovePlayer(player);
+            if (room.IsEmpty())
+                RemoveGameRoom(room);
+        }
+    }
+    private GameRoom FindGameRoom(Port port)
+    {
+        foreach (GameRoom room in _gameRooms)
+        {
+            if (room.Port == port)
+            {
+                return room;
+            }
+        }
+        return null;
     }
 
-    public void RemoveGameRoom(GameRoom gameRoom)
+    private void RemoveGameRoom(GameRoom gameRoom)
     {
         _gameRooms.Remove(gameRoom);
     }

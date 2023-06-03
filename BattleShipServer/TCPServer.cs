@@ -43,6 +43,7 @@ public class TCPServer
             ClientHandler clientHandler = new ClientHandler(client, _logger, startPort);
             clientHandler.GetNewPortRequested += HandleCreateNewGameRoom;
             clientHandler.GetExistingPortRequested += HandleJoinToExistingGameRoom;
+            clientHandler.DisconnectRequest += Disconnect;
             clientHandler.Start();
         }
     }
@@ -79,6 +80,7 @@ public class TCPServer
         clientHandler.Start();
         if(type == RequestType.Port)
             clientHandler.CreateNewGameRequested += CreateNewGame;
+        clientHandler.DisconnectRequest += Disconnect;
         return cl;
     }
 
@@ -129,7 +131,9 @@ public class TCPServer
     private async Task SendMessage(TcpClient client, bool value, RequestType type)
     {
         NetworkStream networkStream = client.GetStream();
-        byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
+        //byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
+        byte[] bytes = BitConverter.GetBytes(value);
+        byte[] responseBytes = new byte[bytes.Length + 1];
 
         responseBytes[0] = (byte)type;
         Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
@@ -154,7 +158,7 @@ public class TCPServer
         await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
         await networkStream.FlushAsync();
 
-        Disconnect(client);
+        Disconnect(null, client);
     }
 
     private async Task<TcpClient> WaitForConnection(Port port)
@@ -184,9 +188,23 @@ public class TCPServer
             _ports[i] = new Port(startPort.PortValue + 1 + i, false);
     }
 
-    private void Disconnect(TcpClient client)
+    private void Disconnect(Port port, TcpClient client)
     {
+        
         client.Close();
         client.Dispose();
+        _logger.Log(" >> Client disconnected");
+        if (port != null)
+        {
+            roomManager.RemovePlayerFromGameRoom(port, client);
+            _logger.Log($" >> Disconnect client on port {port.PortValue}");
+            TcpClient opponent = roomManager.GetOpponent(client, port);
+            if (opponent != client)
+            {
+                SendMessage(opponent, false, RequestType.Online);
+                _logger.Log($" >> Server sent: opponent disconnected");
+            }   
+        }
     }
+
 }

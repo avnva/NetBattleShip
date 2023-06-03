@@ -126,17 +126,6 @@ public class LogInViewModel:ViewModelBase
             MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    private async Task Disconnect()
-    {
-        try
-        {
-            await _player.DisconnectAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
     private RelayCommand _createNewGame;
     public RelayCommand CreateNewGame
     {
@@ -159,6 +148,7 @@ public class LogInViewModel:ViewModelBase
             _gameRoomNumber = GetGameRoomNumber();
             _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
             ChangeContent(FormState.CreateNewGame);
+            //_player.StartCheckingOpponent();
         }
         catch (Exception ex)
         {
@@ -213,8 +203,8 @@ public class LogInViewModel:ViewModelBase
         //проверка флага готовности к игре у противника, переход на новую форму
         try
         {
+            _player.StopCheckingOpponent();
             SendRequest(_createNewGameRequest);
-            
         }
         catch (Exception ex)
         {
@@ -236,11 +226,9 @@ public class LogInViewModel:ViewModelBase
     }
     private async Task GetReadyToGame()
     {
-        GameRoomNumber = _currentBindingTb;
+        GameRoomNumber = CurrentBindingMaskedTextBox;
         await SendRequest(_connectToExistingGameRoom + GameRoomNumber.ToString());
-        _player.StopCheckingOpponent();
         await SendRequest(_waitingOpponentRequest);
-        _player.StartCheckingOpponent();
     }
     
 
@@ -257,6 +245,7 @@ public class LogInViewModel:ViewModelBase
                     if (response.Flag)
                     {
                         OpenNewView(new GameView(new GameViewModel(_player)));
+                        //_player.StartCheckingOpponent();
                         //Hide?.Invoke();
                         MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
                         Close?.Invoke();
@@ -272,12 +261,16 @@ public class LogInViewModel:ViewModelBase
                         ChangeContent(FormState.WaitingStartGame);
                     }
                     else
+                    {
                         MessageBox_Show(null, "Такой комнаты не существует!", "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+                        //очистка текстбокса
+                    }
                     break;
                 case RequestType.WaitingOpponent:
                     if (response.Flag)
                     {
                         OpenNewView(new GameView(new GameViewModel(_player)));
+                        //_player.StartCheckingOpponent();
                         MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
                         Close?.Invoke();
                     }
@@ -331,8 +324,8 @@ public class LogInViewModel:ViewModelBase
 
         IsEnabledMaskedTb = false;
         IsEnabledConnectButton = false;
-
         CurrentCommandConnectButton = StartGameCommand;
+
         CurrentBindingMaskedTextBox = null;
         CurrentMaskFormat = _roomNumberMask;
         CurrentBindingMaskedTextBox = GameRoomNumber;

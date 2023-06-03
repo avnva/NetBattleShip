@@ -61,6 +61,7 @@ public class Player
         Response newPort = await SendRequestAsync(request);
 
         await ConnectToNewPort(IpEndPoint, newPort);
+        StartCheckingOpponent();
     }
 
     public async Task ConnectToNewPort(IPEndPoint ip, Response response)
@@ -75,8 +76,6 @@ public class Player
 
         ping = new Thread(WaitForPing);
         ping.Start();
-        StartCheckingOpponent();
-
     }
 
     private System.Timers.Timer _timer;
@@ -93,7 +92,7 @@ public class Player
     private void CheckOnline(object sender, EventArgs e)
     {
         CheckOpponentOnline();
-        OnOpponentOnline()
+        OnOpponentOnline();
     }
     private async Task CheckOpponentOnline()
     {
@@ -176,7 +175,7 @@ public class Player
                 return new Response(RequestType.WaitingOpponent,
                     GetBoolResponseAsync(buffer));
             case RequestType.Online:
-                return new Response(RequestType.Online, 
+                return new Response(RequestType.Online,
                     GetBoolResponseAsync(buffer));
             case RequestType.Port:
                 return new Response(RequestType.Port,
@@ -217,13 +216,13 @@ public class Player
         {
             if(ping != null && _timer != null)
             {
-        ping.Interrupt();
-        StopCheckingOpponent();
+                ping.Interrupt();
+                StopCheckingOpponent();
             }
-        await _networkStream.WriteAsync(new[] { (byte)RequestType.Disconnect }, 0, 1);
-        await _networkStream.FlushAsync();
-        CloseSocket();
-    }
+            await _networkStream.WriteAsync(new[] { (byte)RequestType.Disconnect }, 0, 1);
+            await _networkStream.FlushAsync();
+            CloseSocket();
+        }
     }
     private void CloseSocket()
     {

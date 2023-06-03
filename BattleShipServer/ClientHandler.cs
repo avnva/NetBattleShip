@@ -23,6 +23,7 @@ public class ClientHandler : IDisposable
     //public event Func<TcpClient, Task> CheckOnlineOpponent;
     public event Func<Port, TcpClient, Task> CheckOnline;
     public event Func<Port, TcpClient, Task> CreateNewGameRequested;
+    public event Action<Port, TcpClient> DisconnectRequest;
 
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
@@ -142,6 +143,13 @@ public class ClientHandler : IDisposable
         string result = Regex.Replace(reguest, @"[^\d]", "");
         return result;
     }
+    private void Disconnect()
+    {
+        if (DisconnectRequest != null)
+            DisconnectRequest.Invoke(port, client);
+        else
+            throw new ArgumentNullException(nameof(DisconnectRequest));
+    }
 
 
     private string GetPort()
@@ -197,13 +205,13 @@ public class ClientHandler : IDisposable
             Disconnect();
     }
 
-    private void Disconnect()
-    {
-        //port.Occupied = false;
-        client.Close();
-        client.Dispose();
-        logger.Log(" >> Client disconnected");
-    }
+    //private void Disconnect()
+    //{
+    //    //port.Occupied = false;
+    //    client.Close();
+    //    client.Dispose();
+    //    logger.Log(" >> Client disconnected");
+    //}
 
     public void Dispose()
     {
