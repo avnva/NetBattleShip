@@ -237,7 +237,7 @@ public class LogInViewModel:ViewModelBase
         try
         {
             request = _requestParser.Parse(request);
-            Response response = await _player.SendRequestAsync(request);
+            Response response = await _player.SendRequestWithResponseAsync(request);
 
             switch (response.Type)
             {

@@ -27,6 +27,7 @@ public class Player
     public bool IsOpponentConnected = false;
     public event EventHandler CheckOpponentOnlineEvent;
     private RequestParser _requestParser;
+    public bool IsOpponentReady;
     public Player()
     {
         lastPingTime = DateTime.Now.Second;
@@ -47,8 +48,8 @@ public class Player
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
 
-        ping = new Thread(WaitForPing);
-        ping.Start();
+        //ping = new Thread(WaitForPing);
+        //ping.Start();
     }
     public int GetPort(IPEndPoint ip)
     {
@@ -58,7 +59,7 @@ public class Player
     public async Task CreateNewGame()
     {
         string request = _requestParser.Parse(_getGameRoom);
-        Response newPort = await SendRequestAsync(request);
+        Response newPort = await SendRequestWithResponseAsync(request);
 
         await ConnectToNewPort(IpEndPoint, newPort);
         StartCheckingOpponent();
@@ -74,8 +75,8 @@ public class Player
         await _playerSocket.ConnectAsync(IpEndPoint);
         _networkStream = _playerSocket.GetStream();
 
-        ping = new Thread(WaitForPing);
-        ping.Start();
+        //ping = new Thread(WaitForPing);
+        //ping.Start();
     }
 
     private System.Timers.Timer _timer;
@@ -97,7 +98,7 @@ public class Player
     private async Task CheckOpponentOnline()
     {
         string request = _requestParser.Parse(_checkOnline);
-        Response response = await SendRequestAsync(request);
+        Response response = await SendRequestWithResponseAsync(request);
         IsOpponentConnected = response.Flag;
     }
     private void OnOpponentOnline()
@@ -148,16 +149,23 @@ public class Player
             return false;
         }
     }
-    public async Task<Response> SendRequestAsync(string message)
+    public async Task SendRequestAsync(string message)
+    {
+        byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+
+        await _networkStream.WriteAsync(messageBytes, 0, messageBytes.Length);
+        await _networkStream.FlushAsync();
+    }
+    public async Task<Response> SendRequestWithResponseAsync(string message)
     {
         byte[] messageBytes = Encoding.UTF8.GetBytes(message);
 
         await _networkStream.WriteAsync(messageBytes, 0, messageBytes.Length);
         await _networkStream.FlushAsync();
 
-        return await GetResponseAsync(message);
+        return await GetResponseAsync();
     }
-    private async Task<Response> GetResponseAsync(string message)
+    public async Task<Response> GetResponseAsync()
     {
         byte[] buffer = new byte[1024 * 8];
         int bytesRead = await _networkStream.ReadAsync(buffer, 0, buffer.Length);

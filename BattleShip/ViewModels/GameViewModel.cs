@@ -43,6 +43,7 @@ public class GameViewModel : ViewModelBase
         "Успехов!\n";
 
     private string _startGameRequest = "Start game";
+    private string _endOfTurnRequest = "End of turn";
 
 
     private Visibility _visibilityComboBox;
@@ -451,7 +452,7 @@ public class GameViewModel : ViewModelBase
         try
         {
             request = _requestParser.Parse(request);
-            Response response = await _player.SendRequestAsync(request);
+            Response response = await _player.SendRequestWithResponseAsync(request);
 
             switch (response.Type)
             {
@@ -467,10 +468,10 @@ public class GameViewModel : ViewModelBase
                     else
                     {
                         HideControls();
-                        CurrentTextStateLabel = _opponentTurnText;
+                        _gameManager.GenerateEnemyField();
                         MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
                         await OpponentMove();
-                        _gameManager.GenerateEnemyField();
+                        
                     }
                     break;
                 default:
@@ -509,47 +510,52 @@ public class GameViewModel : ViewModelBase
         CellViewModel cell = EnemyCells.Single(c => c.Row == row && c.Column == col);
         return cell;
     }
-
+    
     private async Task OpponentMove()
     {
+        bool flag = false;
         CurrentCommandEnemyCellButton = null;
-        _gameManager.OpponentMove();
+        CurrentTextStateLabel = _opponentTurnText;
+        while(flag == false)
+        {
+           flag = await _gameManager.IsOpponentMove();
+        }
+        CurrentTextStateLabel = _yourTurnText;
+        CurrentCommandEnemyCellButton = HitShipCommand;
+    }
+    private void WaitingRespone()
+    {
+        CurrentCommandEnemyCellButton = null;
+        CurrentTextStateLabel = "Ждем ответ...";
+    }
+    private void ResponseRecieved()
+    {
+        CurrentTextStateLabel = _yourTurnText;
         CurrentCommandEnemyCellButton = HitShipCommand;
     }
     private async Task HitCell(CellViewModel cell)
     {
-        try
+        if (cell.State == CellState.Empty)
         {
+            WaitingRespone();
             HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
-            if (hitState == HitState.Miss)
-                await OpponentMove();
-
-            //заглушка
+            ResponseRecieved();
             if (_gameManager.Score == 1)
             {
                 MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
-                Close?.Invoke();
+                //Close?.Invoke();
             }
-                
-            HideControls();
-            CurrentTextStateLabel = _opponentTurnText;
-            CurrentCommandEnemyCellButton = null;
-            await OpponentMove();
-            //    _gameManager.AddShipToCells(cell.Row, cell.Column, SelectedShip, direction);
-
-            //    CurrentTextStateLabel = _chooseShipText;
-
-            //    HideControls();
-            //    ChangeVisibilityComboBox = Visibility.Visible;
-
-            //    if (AvailableShips.Count != 10)
-            //        ChangeVisibilityDeleteButton = Visibility.Visible;
-            //}
+            if (hitState == HitState.Miss)
+            {
+                //await _player.SendRequestAsync(_requestParser.Parse(_endOfTurnRequest));
+                await OpponentMove();
+            }
         }
-        catch (Exception ex)
+        else
         {
-            MessageBox_Show(null, ex.Message, "Error occured", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox_Show(null, "Вы уже делали встрел по этой клетке!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
     }
     private void AddShip(CellViewModel cell)
     {

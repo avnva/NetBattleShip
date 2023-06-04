@@ -22,6 +22,17 @@ public class GameRoomManager
     //    else
     //        return false;
     //}
+    public bool IsPlayerReady(Port port)
+    {
+        GameRoom room = FindGameRoom(port);
+        return room.IsPlayerReady;
+    }
+    public void SetPlayerReady(bool value, Port port)
+    {
+        GameRoom room = FindGameRoom(port);
+        room.IsPlayerReady = value;
+    }
+
     public bool IsFirstPlayer(TcpClient client, Port port)
     {
         GameRoom room = FindGameRoom(port);

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data.Common;
 using System.Runtime.CompilerServices;
+using System.ComponentModel;
 
 namespace BattleShipServer;
 
@@ -83,8 +84,9 @@ public class TCPServer
             clientHandler.CreateNewGameRequested += CreateNewGame;
         clientHandler.DisconnectRequest += Disconnect;
         clientHandler.StartGameRequested += HandleStartGame;
-        clientHandler.SendCoordinateToOpponentRequested += SendCoordinateToOpponent;
+        clientHandler.SendCoordinateToOpponentRequested += CheckPlayerReady;
         clientHandler.SendCellStateToOpponentRequested += SendStateToOpponent;
+        clientHandler.SetReadinessRequested += SetReadiness;
         return cl;
     }
 
@@ -141,22 +143,46 @@ public class TCPServer
             //_logger.Log($" >> Server sent: connection successful");
         }
     }
+    private async Task CheckPlayerReady(Port port, TcpClient client, string message)
+    {
+        bool startFlag;
+        startFlag = roomManager.IsPlayerReady(port);
+        if (startFlag || message.Contains("End of turn"))
+        {
+            await SendCoordinateToOpponent(port, client, message);
+        }
+        else
+        {
+            await SendStringMessage(client, "Try again", RequestType.CheckOpponentCell);
+            _logger.Log($" >> Try Again");
+            //await SendStateToOpponent(port, client, "Try again");
+        }
+         
+    }
     private async Task SendCoordinateToOpponent(Port port, TcpClient client, string message)
     {
         TcpClient opponent = roomManager.GetOpponent(client, port);
         if (opponent == client)
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.OpponentMove);
-        _logger.Log($" >> Server sent coordinate");
+        //await SendBoolMessage(client, true, RequestType.CheckOpponentCell);
+        _logger.Log($" >> Server sent coordinate: {message}");
     }
     private async Task SendStateToOpponent(Port port, TcpClient client, string message)
     {
+        roomManager.SetPlayerReady(false, port);
         TcpClient opponent = roomManager.GetOpponent(client, port);
         if (opponent == client)
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.CheckOpponentCell);
-        _logger.Log($" >> Server sent cell state");
+        _logger.Log($" >> Server sent cell state: {message}");
     }
+    private void SetReadiness(Port port)
+    {
+        roomManager.SetPlayerReady(true, port);
+        _logger.Log($" >> Opponent ready");
+    }
+    
     private async Task SendStringMessage(TcpClient client, string value, RequestType type)
     {
         NetworkStream networkStream = client.GetStream();

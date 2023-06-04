@@ -2,12 +2,14 @@
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Navigation;
 
 namespace BattleShip;
 
 public class CellStateToColorConverter : IValueConverter
 {
     BrushConverter converter = new BrushConverter();
+    Brush customBrush;
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is CellState state)
@@ -17,12 +19,14 @@ public class CellStateToColorConverter : IValueConverter
                 case CellState.Empty:
                     return Brushes.White; // Цвет для пустой клетки
                 case CellState.Ship:
-                    Brush customBrush = (Brush)converter.ConvertFrom("#1a153f");
+                    customBrush = (Brush)converter.ConvertFrom("#1a153f");
                     return customBrush; // Цвет для занятой клетки (корабль)
                 case CellState.Hit:
-                    return Brushes.Red;
+                    customBrush = (Brush)converter.ConvertFrom("#ff3333");
+                    return customBrush;
                 case CellState.Miss:
-                    return Brushes.DarkGreen;
+                    customBrush = (Brush)converter.ConvertFrom("#b5b5b5");
+                    return customBrush;
                 default:
                     return Brushes.Transparent;
             }

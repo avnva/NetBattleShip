@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Xceed.Wpf.Toolkit;
@@ -414,20 +415,31 @@ public class GameManager
         else
             return false;
     }
+    private void MakeCellStatesMiss(Cell cell)
+    {
+
+    }
 
     public async Task<HitState> HitCell(int row, int column)
     {
         _player.StopCheckingOpponent();
+        string BadResponse = "Try again";
         Cell cell = _enemyCells.FirstOrDefault(c => c.Row == row && c.Column == column);
-        Response response = await _player.SendRequestAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+        Response response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+        BadResponse = response.Contents;
+        while (BadResponse.Contains("Try again"))
+        {
+            response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+            BadResponse = response.Contents;
+        }
         HitState state = GetCellStateFromResponse(response.Contents);
-        _player.StartCheckingOpponent();
+        //_player.StartCheckingOpponent();
         if (state == HitState.Kill)
         {
             cell.State = CellState.Hit;
             Score++;
         }
-        else if(state == HitState.Hit)   
+        else if (state == HitState.Hit)
             cell.State = CellState.Hit;
         else if (state == HitState.Miss)
             cell.State = CellState.Miss;
@@ -435,30 +447,36 @@ public class GameManager
         return state;
     }
 
-    public async Task OpponentMove()
+    public async Task<bool> IsOpponentMove()
     {
         _player.StopCheckingOpponent();
-        Response response = await _player.SendRequestAsync(_requestParser.Parse(_waitCellForCheckRequest));
-        Cell checkedCell = GetCellFromResponse(response.Contents);
 
-        if(checkedCell.State == CellState.Ship)
+        Response response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_waitCellForCheckRequest));
+        if (GetCellFromResponse(response.Contents) != null)
         {
-            checkedCell.State = CellState.Hit;
-            ShipDirection shipDirection = DeterminingDirection(checkedCell);
-            Cell firstCell = FindFirstCell(checkedCell, shipDirection);
-            int shipSize = DeterminingShipSize(firstCell, shipDirection) - 1;
-            if (shipSize == 0)
-                await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
-            else
-                await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Hit.ToString()));
+            Cell checkedCell = GetCellFromResponse(response.Contents);
+            if (checkedCell.State == CellState.Ship)
+            {
+                checkedCell.State = CellState.Hit;
+                ShipDirection shipDirection = DeterminingDirection(checkedCell);
+                Cell firstCell = FindFirstCell(checkedCell, shipDirection);
+                int shipSize = DeterminingShipSize(firstCell, shipDirection) - 1;
+                if (shipSize == 0)
+                    await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
+                else
+                    await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Hit.ToString()));
+            }
+            else if (checkedCell.State == CellState.Empty)
+            {
+                checkedCell.State = CellState.Miss;
+                await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Miss.ToString()));
+                return true;
+            }
+            UpdateCell(checkedCell);
+            //_player.StartCheckingOpponent();
         }
-        else
-        {
-            checkedCell.State = CellState.Miss;
-            await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Miss.ToString()));
-        }
-        UpdateCell(checkedCell);
-        _player.StartCheckingOpponent();
+        //_player.StartCheckingOpponent();
+        return false;
     }
 
     private Cell GetCellFromResponse(string response)
@@ -479,7 +497,7 @@ public class GameManager
         }
         else
         {
-            throw new ArgumentException("Invalid response format");
+            return null;
         }
     }
 

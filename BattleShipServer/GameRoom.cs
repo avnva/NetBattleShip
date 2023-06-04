@@ -14,6 +14,7 @@ public class GameRoom
     public Port Port { get; set; }
     private int _maxPlayers = 2;
     public bool IsFirstPlayerSet;
+    public bool IsPlayerReady { get; set; }
     public GameRoom(Port port)
     {
         players = new List<TcpClient>();

@@ -22,6 +22,7 @@ public class ClientHandler : IDisposable
     public event Action<Port, TcpClient> DisconnectRequest;
     public event Func<Port, TcpClient, string, Task> SendCoordinateToOpponentRequested;
     public event Func<Port, TcpClient, string, Task> SendCellStateToOpponentRequested;
+    public event Action<Port> SetReadinessRequested;
 
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
@@ -121,6 +122,7 @@ public class ClientHandler : IDisposable
                     await SendStateMessage(request);
                     break;
                 case RequestType.OpponentMove:
+                    SetReadiness();
                     break;
                 default:
                     throw new ApplicationException("Wrong signature!");
@@ -130,6 +132,13 @@ public class ClientHandler : IDisposable
         {
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
+    }
+    private void SetReadiness()
+    {
+        if (SetReadinessRequested != null)
+            SetReadinessRequested.Invoke(port);
+        else
+            throw new ArgumentNullException(nameof(SetReadinessRequested));
     }
     private async Task SendStateMessage(string request)
     {
@@ -142,6 +151,7 @@ public class ClientHandler : IDisposable
     {
         if (SendCoordinateToOpponentRequested != null)
             await SendCoordinateToOpponentRequested.Invoke(port, client, request);
+
         else
             throw new ArgumentNullException(nameof(SendCoordinateToOpponentRequested));
     }

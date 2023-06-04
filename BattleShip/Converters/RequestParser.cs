@@ -33,7 +33,7 @@ public class RequestParser
             return Encoding.UTF8.GetString(new[] { _waitingOpponent }) + request;
         if (request == @"Start game")
             return Encoding.UTF8.GetString(new[] { _startGameRequest }) + request;
-        if (request.Contains("Hits cell:"))
+        if (request.Contains("Hits cell:") )
             return Encoding.UTF8.GetString(new[] { _checkCellRequest }) + request;
         if (request == @"Wait opponent...")
             return Encoding.UTF8.GetString(new[] { _opponentMoveRequest }) + request;
