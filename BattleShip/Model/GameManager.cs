@@ -175,7 +175,7 @@ public class GameManager
                 for (int i = 0; i < shipSize; i++)
                 {
                     Cell cell = FindCell(row, column + i);
-                    if (!CheckCell(cell) || !CheckLowerAndUpperCell(cell))
+                    if (!CheckCell(cell, CellState.Empty) || !CheckLowerAndUpperCell(cell, CellState.Empty))
                         return false;
                 }
             else
@@ -187,7 +187,7 @@ public class GameManager
                 for (int i = 0; i < shipSize; i++)
                 {
                     Cell cell = FindCell(row + i, column);
-                    if (!CheckCell(cell) || !CheckRightAndLeftCell(cell))
+                    if (!CheckCell(cell, CellState.Empty) || !CheckRightAndLeftCell(cell, CellState.Empty))
                         return false;
                 }
             else
@@ -201,16 +201,16 @@ public class GameManager
             return false;
 
         Cell leftCell = FindCell(row, column - 1);
-        if (!CheckCell(leftCell))
+        if (!CheckCell(leftCell, CellState.Empty))
             return false;
-        else if (!CheckLowerAndUpperCell(leftCell))
+        else if (!CheckLowerAndUpperCell(leftCell, CellState.Empty))
             return false;
 
 
         Cell rightCell = FindCell(row, column + shipSize);
-        if (!CheckCell(leftCell))
+        if (!CheckCell(leftCell, CellState.Empty))
             return false;
-        else if (!CheckLowerAndUpperCell(rightCell))
+        else if (!CheckLowerAndUpperCell(rightCell, CellState.Empty))
             return false;
         return true;
     }
@@ -221,46 +221,76 @@ public class GameManager
             return false;
 
         Cell lowerCell = FindCell(row - 1, column);
-        if (!CheckCell(lowerCell))
+        if (!CheckCell(lowerCell, CellState.Empty))
             return false;
-        else if (!CheckRightAndLeftCell(lowerCell))
+        else if (!CheckRightAndLeftCell(lowerCell, CellState.Empty))
             return false;
 
         Cell rightCell = FindCell(row + shipSize, column);
-        if (!CheckCell(rightCell))
+        if (!CheckCell(rightCell, CellState.Empty))
             return false;
-        else if (!CheckRightAndLeftCell(rightCell))
+        else if (!CheckRightAndLeftCell(rightCell, CellState.Empty))
             return false;
         return true;
     }
-    private bool CheckLowerAndUpperCell(Cell cell)
+    private bool CheckLowerAndUpperCell(Cell cell, CellState state)
     {
-        if (cell == null)
-            return true;
-        if (!CheckCell(FindCell(cell.Row + 1, cell.Column)) ||
-            !CheckCell(FindCell(cell.Row - 1, cell.Column)))
-            return false;
-        else
-            return true;
+        if(state == CellState.Empty)
+        {
+            if (cell == null)
+                return true;
+            if (CheckCell(FindCell(cell.Row + 1, cell.Column), state) &&
+                CheckCell(FindCell(cell.Row - 1, cell.Column), state))
+                return true;
+        }
+        else if (state == CellState.Ship || state == CellState.Hit)
+        {
+            if (CheckCell(FindCell(cell.Row + 1, cell.Column), state) ||
+            CheckCell(FindCell(cell.Row - 1, cell.Column), state))
+                return true;  
+        }
+        return false;
+
     }
 
-    private bool CheckRightAndLeftCell(Cell cell)
+    private bool CheckRightAndLeftCell(Cell cell, CellState state)
     {
-        if (cell == null)
-            return true;
-        if (!CheckCell(FindCell(cell.Row, cell.Column + 1)) ||
-            !CheckCell(FindCell(cell.Row, cell.Column - 1)))
-            return false;
-        else
-            return true;
+        if(state == CellState.Empty)
+        {
+            if (cell == null)
+                return true;
+            if (CheckCell(FindCell(cell.Row, cell.Column + 1), state) &&
+                CheckCell(FindCell(cell.Row, cell.Column - 1), state))
+                return true;
+        }
+        else if (state == CellState.Ship || state == CellState.Hit)
+        {
+            if (CheckCell(FindCell(cell.Row, cell.Column + 1), state) ||
+            CheckCell(FindCell(cell.Row, cell.Column - 1), state))
+                return true;
+        }
+        return false;
     }
 
-    private bool CheckCell(Cell cell)
+    private bool CheckCell(Cell cell, CellState state)
     {
-        if (cell == null || cell.State == CellState.Empty)
-            return true;
-        else
-            return false;
+        if (state == CellState.Empty)
+        {
+            if (cell == null || cell.State == CellState.Empty)
+                return true;
+        }
+        else if (state == CellState.Ship)
+        {
+            if (cell != null && cell.State == CellState.Ship)
+                return true;
+        }
+        else if (state == CellState.Hit)
+        {
+            if (cell != null && (cell.State == CellState.Ship || cell.State == CellState.Hit))
+                return true;
+        }
+        return false;
+        
     }
 
     private Cell FindCell(int row, int col)
@@ -303,8 +333,8 @@ public class GameManager
     {
         Cell cell = _playerCells.FirstOrDefault(c => c.Row == row && c.Column == column);
         ShipDirection shipDirection = DeterminingDirection(cell);
-        Cell firstCell = FindFirstCell(cell, shipDirection);
-        int shipSize = DeterminingShipSize(firstCell, shipDirection);
+        Cell firstCell = FindFirstCell(cell, shipDirection, CellState.Ship);
+        int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Ship);
         Ship ship = new Ship(shipSize);
         // Разместить корабль на игровом поле
         DeleteShip(firstCell, shipSize, shipDirection);
@@ -337,14 +367,14 @@ public class GameManager
         }
     }
 
-    private Cell FindFirstCell(Cell cell, ShipDirection shipDirection)
+    private Cell FindFirstCell(Cell cell, ShipDirection shipDirection, CellState state)
     {
         Cell firstCell = new Cell(cell.Row, cell.Column);
         if (shipDirection == ShipDirection.Horizontal)
         {
             for (int i = 1; i < 4; i++)
             {
-                if (CheckShipCell(FindCell(cell.Row, cell.Column - i)))
+                if (CheckCell(FindCell(cell.Row, cell.Column - i), state))
                     firstCell = FindCell(cell.Row, cell.Column - i);
                 else break;
             }
@@ -353,7 +383,7 @@ public class GameManager
         {
             for (int i = 1; i < 4; i++)
             {
-                if (CheckShipCell(FindCell(cell.Row - i, cell.Column)))
+                if (CheckCell(FindCell(cell.Row - i, cell.Column),  state))
                     firstCell = FindCell(cell.Row - i, cell.Column);
                 else break;
             }
@@ -361,15 +391,21 @@ public class GameManager
         return firstCell;
     }
 
-    private int DeterminingShipSize(Cell startCell, ShipDirection direction)
+    private int DeterminingShipSize(Cell startCell, ShipDirection direction, CellState state)
     {
         int shipSize = 1;
         if (direction == ShipDirection.Horizontal)
         {
             for (int i = 1; i < 4; i++)
             {
-                if (CheckShipCell(FindCell(startCell.Row, startCell.Column + i)))
+                if (CheckCell(FindCell(startCell.Row, startCell.Column + i), state))
+                {
                     shipSize++;
+                    if (state == CellState.Hit)
+                        if(FindCell(startCell.Row, startCell.Column + i).State == CellState.Hit)
+                            shipSize--;
+                }
+                    
                 else break;
             }
         }
@@ -377,44 +413,29 @@ public class GameManager
         {
             for (int i = 1; i < 4; i++)
             {
-                if (CheckShipCell(FindCell(startCell.Row + i, startCell.Column)))
+                if (CheckCell(FindCell(startCell.Row + i, startCell.Column), state))
+                {
                     shipSize++;
+                    if (state == CellState.Hit)
+                        if (FindCell(startCell.Row + i, startCell.Column).State == CellState.Hit)
+                            shipSize--;
+                }
                 else break;
             }
         }
         return shipSize;
     }
 
-    private ShipDirection DeterminingDirection(Cell startCell)
+    private ShipDirection DeterminingDirection(Cell startCell, CellState state)
     {
-        if (!CheckLowerAndUpperShipCell(startCell))
-            if (CheckRightAndLeftShipCell(startCell))
+        if (!CheckLowerAndUpperCell(startCell, state))
+            if (CheckRightAndLeftCell(startCell, state))
                 return ShipDirection.Horizontal;
         return ShipDirection.Vertical;
     }
-    private bool CheckShipCell(Cell cell)
-    {
-        if (cell != null && cell.State == CellState.Ship)
-            return true;
-        else
-            return false;
-    }
-    private bool CheckLowerAndUpperShipCell(Cell cell)
-    {
-        if (CheckShipCell(FindCell(cell.Row + 1, cell.Column)) ||
-            CheckShipCell(FindCell(cell.Row - 1, cell.Column)))
-            return true;
-        else
-            return false;
-    }
-    private bool CheckRightAndLeftShipCell(Cell cell)
-    {
-        if (CheckShipCell(FindCell(cell.Row, cell.Column + 1)) ||
-            CheckShipCell(FindCell(cell.Row, cell.Column - 1)))
-            return true;
-        else
-            return false;
-    }
+
+
+
     private void MakeCellStatesMiss(Cell cell)
     {
 
@@ -458,9 +479,9 @@ public class GameManager
             if (checkedCell.State == CellState.Ship)
             {
                 checkedCell.State = CellState.Hit;
-                ShipDirection shipDirection = DeterminingDirection(checkedCell);
-                Cell firstCell = FindFirstCell(checkedCell, shipDirection);
-                int shipSize = DeterminingShipSize(firstCell, shipDirection) - 1;
+                ShipDirection shipDirection = DeterminingDirection(checkedCell, CellState.Hit);
+                Cell firstCell = FindFirstCell(checkedCell, shipDirection, CellState.Hit);
+                int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Hit) - 1;
                 if (shipSize == 0)
                     await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
                 else
