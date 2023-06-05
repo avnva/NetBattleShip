@@ -520,8 +520,17 @@ public class GameViewModel : ViewModelBase
         {
            flag = await _gameManager.IsOpponentMove();
         }
-        CurrentTextStateLabel = _yourTurnText;
-        CurrentCommandEnemyCellButton = HitShipCommand;
+        if (_gameManager.OpponentScore != _gameManager.MaxNumberOfPoints)
+        {
+            CurrentTextStateLabel = _yourTurnText;
+            CurrentCommandEnemyCellButton = HitShipCommand;
+        }
+        else if (_gameManager.OpponentScore == _gameManager.MaxNumberOfPoints)
+        {
+            MessageBox_Show(null, "You lose!", "", MessageBoxButton.OK, MessageBoxImage.Information);
+            CurrentCommandEnemyCellButton = null;
+            CurrentTextStateLabel = "Вы проиграли!";
+        }
     }
     private void WaitingRespone()
     {
@@ -540,10 +549,11 @@ public class GameViewModel : ViewModelBase
             WaitingRespone();
             HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
             ResponseRecieved();
-            if (_gameManager.Score == 3)
+            if (_gameManager.PlayerScore == _gameManager.MaxNumberOfPoints)
             {
                 MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
-                //Close?.Invoke();
+                CurrentCommandEnemyCellButton = null;
+                CurrentTextStateLabel = "Вы победили!";
             }
             if (hitState == HitState.Miss)
             {

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Xceed.Wpf.Toolkit;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BattleShip.Model;
 public enum HitState
@@ -25,7 +26,9 @@ public class GameManager
     private Cell _cell;
     private Player _player;
     private RequestParser _requestParser;
-    public int Score;
+    public int PlayerScore;
+    public int OpponentScore;
+    public int MaxNumberOfPoints;
 
     public event Action PlayerCellsChanged;
     public event Action EnemyCellsChanged;
@@ -47,6 +50,7 @@ public class GameManager
         _player = player;
         PlayerCells = GenerateCells();
         AvailableShips = GenerateShips();
+        MaxNumberOfPoints = AvailableShips.Count;
     }
 
     private List<Ship> GenerateShips()
@@ -401,11 +405,11 @@ public class GameManager
 
     private int DeterminingShipSize(Cell startCell, ShipDirection direction, CellState state)
     {
-        int shipSize = 1;
+        int shipSize = 0;
         string field = "Player";
         if (direction == ShipDirection.Horizontal)
         {
-            for (int i = 1; i < 4; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (CheckCell(FindCell(startCell.Row, startCell.Column + i, field), state))
                 {
@@ -420,7 +424,7 @@ public class GameManager
         }
         else
         {
-            for (int i = 1; i < 4; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (CheckCell(FindCell(startCell.Row + i, startCell.Column, field), state))
                 {
@@ -667,13 +671,11 @@ public class GameManager
         if (state == HitState.Kill)
         {
             cell.State = CellState.Hit;
-            Score++;
+            PlayerScore++;
             ShipDirection shipDirection = DeterminingDirection(cell, CellState.Hit, "Enemy");
             Cell firstCell = FindFirstCell(cell, shipDirection, CellState.Hit, "Enemy");
 
             MakeAroundCellsStatesMiss(firstCell, shipDirection);
-            
-            //int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Hit) - 1;
         }
         else if (state == HitState.Hit)
             cell.State = CellState.Hit;
@@ -696,15 +698,24 @@ public class GameManager
                 checkedCell.State = CellState.Hit;
                 ShipDirection shipDirection = DeterminingDirection(checkedCell, CellState.Hit, "Player");
                 Cell firstCell = FindFirstCell(checkedCell, shipDirection, CellState.Hit, "Player");
-                int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Hit) - 1;
+                int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Hit);
                 if (shipSize == 0)
+                {
                     await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
+                    OpponentScore++;
+                    if(OpponentScore == MaxNumberOfPoints)
+                    {
+                        UpdateCell(checkedCell);
+                        return true;
+                    }
+                }
                 else
                     await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Hit.ToString()));
             }
             else if (checkedCell.State == CellState.Empty)
             {
                 checkedCell.State = CellState.Miss;
+                UpdateCell(checkedCell);
                 await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Miss.ToString()));
                 return true;
             }
