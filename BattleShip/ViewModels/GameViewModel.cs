@@ -540,7 +540,7 @@ public class GameViewModel : ViewModelBase
             WaitingRespone();
             HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
             ResponseRecieved();
-            if (_gameManager.Score == 1)
+            if (_gameManager.Score == 3)
             {
                 MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
                 //Close?.Invoke();
