@@ -18,6 +18,7 @@ public class RequestParser
     private byte _checkCellRequest = 9;
     private byte _opponentMoveRequest = 10;
     private byte _sendCellState = 11;
+    private byte _reconnect = 12;
 
     public string Parse(string request)
     {
@@ -39,6 +40,8 @@ public class RequestParser
             return Encoding.UTF8.GetString(new[] { _opponentMoveRequest }) + request;
         if (request.Contains("Cell state:"))
             return Encoding.UTF8.GetString(new[] { _sendCellState }) + request;
+        if(request.Contains("Reconnect to port:"))
+            return Encoding.UTF8.GetString(new[] { _reconnect }) + request;
         else
             return null;
 

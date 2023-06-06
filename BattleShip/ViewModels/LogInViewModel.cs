@@ -22,6 +22,9 @@ public class LogInViewModel:ViewModelBase
     private string _name;
     private string _gameRoomNumber;
     private RequestParser _requestParser;
+    private int _startPort;
+    private string _lastRequest;
+    private bool _requestSuccess;
 
     private Visibility _visibilityConnectControls;
     private Visibility _visibilityChoiseControls;
@@ -164,47 +167,89 @@ public class LogInViewModel:ViewModelBase
     }
     private async void Connect()
     {
-        try
+        OpponentConnectTextChange = "Ожидаем ответ от сервера...";
+        IsEnabledConnectButton = false;
+        EndPoint = CurrentBindingTextBox;
+        var parts = EndPoint.Split(':');
+        var ipAddressString = parts[0];
+        var portString = parts[1];
+
+        if (!IPAddress.TryParse(ipAddressString, out IPAddress ipAddress))
+            throw new Exception("Неверный формат IP адреса");
+        int port = int.Parse(portString);
+            
+        if(await _player.ConnectAsync(ipAddress, port))
         {
-            OpponentConnectTextChange = "Ожидаем ответ от сервера...";
-            IsEnabledConnectButton = false;
-            EndPoint = CurrentBindingTextBox;
-            var parts = EndPoint.Split(':');
-            var ipAddressString = parts[0];
-            var portString = parts[1];
-
-            if (!IPAddress.TryParse(ipAddressString, out IPAddress ipAddress))
-                throw new Exception("Неверный формат IP адреса");
-            int port = int.Parse(portString);
-
-            await _player.ConnectAsync(ipAddress, port);
             _player.Name = Name;
-            _endPoint = _player.IpEndPoint;
-            _player.ServerDisconnected += ServerDisconnected;
-            ChangeContent(FormState.ServerConnect);
+        _endPoint = _player.IpEndPoint;
+        _startPort = port;
+        _player.ServerDisconnected += ServerDisconnected;
+        ChangeContent(FormState.ServerConnect);
         }
-        catch (Exception ex)
+        else
         {
-            MessageBox_Show(null, ex.Message, "Ошибка!", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox_Show(null, "Неверный IP адрес", "Ошибка!", MessageBoxButton.OK, MessageBoxImage.Error);
             OpponentConnectTextChange = "";
             IsEnabledConnectButton = true;
         }
+        
     }
-    private void ServerDisconnected(object sender, EventArgs e)
+    private bool connectFlag = false;
+    private async Task HandleFirstMessageBoxResult(MessageBoxResult result)
     {
-        // Показать окно с предложением переподключиться
-        //var result = MessageBox_Show(null, "Соединение с сервером было прервано. Хотите переподключиться?", "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        //if (result == MessageBoxResult.Yes)
-        //{
-        //    // Логика для переподключения к серверу без прерывания игры
-        //    // ...
-        //}
+        string _reconnectRequest = "Reconnect to port: ";
+        if (result == MessageBoxResult.Yes)
+        {
+            int port = _player.Port;
+            bool connect = false;
+            while (connectFlag != true)
+            {
+                connectFlag = await _player.ConnectAsync(_player.IpEndPoint.Address, _startPort);
+                if (connectFlag == false)
+                {
+                     MessageBox_Show(HandleSecondMessageBoxResult, "Ошибка подключения. Попробовать снова?", "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                }
+                else
+                    connect = true;
+            }
+            if (connect)
+            {
+                if(port != _startPort)
+                    await SendRequest(_reconnectRequest + port);
+            }
+            else
+            {
+                Environment.Exit(0);
+            }
+        }
+        else if (result == MessageBoxResult.No)
+        {
+            Environment.Exit(0);
+        }
+    }
+    private void HandleSecondMessageBoxResult(MessageBoxResult result)
+    {
+        if (result == MessageBoxResult.Yes)
+            connectFlag = false;
+        else
+        {
+            Environment.Exit(0);
+        }
+            
+    }
+    private async Task ServerDisconnected()
+    {
+        _player.StopCheckingOpponent();
+        MessageBox_ShowAsync(HandleFirstMessageBoxResult, "Сервер отключился. Хотите переподключиться?", "Предупреждение", MessageBoxButton.YesNo);
     }
     private async Task ConnectToNewGameRoom()
     {
         try
         {
+            _lastRequest = "CreateNewGame";
+            //_requestSuccess = false;
             await _player.CreateNewGame();
+            //_requestSuccess = true;
             _endPoint = _player.IpEndPoint;
             _gameRoomNumber = _player.GetPort(_endPoint).ToString();
             _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
@@ -233,6 +278,8 @@ public class LogInViewModel:ViewModelBase
         try
         {
             _player.StopCheckingOpponent();
+            _lastRequest = _createNewGameRequest;
+            _requestSuccess = false;
             SendRequest(_createNewGameRequest);
         }
         catch (Exception ex)
@@ -243,6 +290,8 @@ public class LogInViewModel:ViewModelBase
     private async Task GetReadyToGame()
     {
         GameRoomNumber = CurrentBindingTextBox;
+        _lastRequest = _connectToExistingGameRoomRequest + GameRoomNumber.ToString();
+        _requestSuccess = false;
         await SendRequest(_connectToExistingGameRoomRequest + GameRoomNumber.ToString());
         //await SendRequest(_waitingOpponentRequest);
     }
@@ -252,12 +301,13 @@ public class LogInViewModel:ViewModelBase
         {
             request = _requestParser.Parse(request);
             Response response = await _player.SendRequestWithResponseAsync(request);
-
+            
             switch (response.Type)
             {
                 case RequestType.CreateNewGame:
                     if (response.Flag)
                     {
+                        _requestSuccess = true;
                         Hide?.Invoke();
                         OpenNewView(new GameView(new GameViewModel(_player)));
                         MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -265,6 +315,7 @@ public class LogInViewModel:ViewModelBase
                     }
                     else
                     {
+                        _requestSuccess = true;
                         throw new Exception("Ошибка подключения");
                     }
                     break;
@@ -272,11 +323,15 @@ public class LogInViewModel:ViewModelBase
                     //_player.ConnectToNewPort(EndPoint, response);
                     if (response.Flag)
                     {
+                        _requestSuccess = true;
                         ChangeContent(FormState.WaitingStartGame);
+                        _lastRequest = _waitingOpponentRequest;
+                        _requestSuccess = false;
                         await SendRequest(_waitingOpponentRequest);
                     }
                     else
                     {
+                        _requestSuccess = true;
                         CurrentBindingTextBox = null;
                         MessageBox_Show(null, "Такой комнаты не существует!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
@@ -284,10 +339,30 @@ public class LogInViewModel:ViewModelBase
                 case RequestType.WaitingOpponent:
                     if (response.Flag)
                     {
-                        OpenNewView(new GameView(new GameViewModel(_player)));
-                        Hide?.Invoke();
-                        MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
-                        Close?.Invoke();
+                        Application.Current.Dispatcher.Invoke(() => {
+                            _requestSuccess = true;
+                            OpenNewView(new GameView(new GameViewModel(_player)));
+                            Hide?.Invoke();
+                            MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
+                            Close?.Invoke();
+                        });
+                    }
+                    break;
+                case RequestType.Reconnect:
+                    if (response.Flag)
+                    {
+                        MessageBox_Show(null, "Успешно!", "Переподключение", MessageBoxButton.OK, MessageBoxImage.Information);
+                        if (_requestSuccess == false)
+                        {
+                            if (_lastRequest != null && _lastRequest != "CreateNewGame")
+                                await SendRequest(_lastRequest);
+                            else if (_lastRequest != null && _lastRequest == "CreateNewGame")
+                                _player.StartCheckingOpponent();
+                        }
+                    }
+                    else
+                    {
+                        await ServerDisconnected();
                     }
                     break;
                 default:

@@ -21,6 +21,7 @@ public class ClientHandler : IDisposable
     public event Func<Port, TcpClient, Task> DisconnectRequest;
     public event Func<Port, TcpClient, string, Task> SendCoordinateToOpponentRequested;
     public event Func<Port, TcpClient, string, Task> SendCellStateToOpponentRequested;
+    public event Func<int, TcpClient, Task<bool>> ReconnectRequest;
     public event Action<Port> SetReadinessRequested;
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
@@ -117,6 +118,9 @@ public class ClientHandler : IDisposable
                 case RequestType.OpponentMove:
                     SetReadiness();
                     break;
+                case RequestType.Reconnect:
+                    await Reconnect(GetPortFromRequest(request));
+                    break;
                 default:
                     throw new ApplicationException("Wrong signature!");
             }
@@ -125,6 +129,24 @@ public class ClientHandler : IDisposable
         {
             await SendStringAsync(ex.Message, RequestType.Exception);
         }
+    }
+    private async Task Reconnect(string portValue)
+    {
+        int ConnectionPortValue = 0;
+        if (int.TryParse(portValue, out int number))
+            ConnectionPortValue = number;
+        else
+            throw new ArgumentException(nameof(portValue));
+
+        if (ConnectionPortValue != 0)
+        {
+            if (ReconnectRequest != null)
+                _isActiv = await ReconnectRequest.Invoke(ConnectionPortValue, client);
+            else
+                throw new ArgumentNullException(nameof(ReconnectRequest));
+        }
+        else
+            throw new ArgumentException();
     }
     private void SetReadiness()
     {

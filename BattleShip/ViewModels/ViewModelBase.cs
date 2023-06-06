@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using BattleShip.ViewModels;
+using System.Threading.Tasks;
 
 namespace BattleShip;
 
@@ -23,6 +24,25 @@ public class ViewModelBase : INotifyPropertyChanged
             new MessageBoxEventArgs(resultAction, messageBoxText, caption,
                 button, icon, defaultResult, options));
     }
+    //protected void MessageBox_Show(Action<MessageBoxResult> resultAction, string messageBoxText,
+    //string caption = "", MessageBoxButton button = MessageBoxButton.OK,
+    //MessageBoxImage icon = MessageBoxImage.None,
+    //MessageBoxResult defaultResult = MessageBoxResult.None, MessageBoxOptions options = MessageBoxOptions.None)
+    //{
+    //    var args = new MessageBoxEventArgs(resultAction, messageBoxText, caption, button, icon, defaultResult, options);
+    //    MessageBoxRequest?.Invoke(this, args);
+    //    args.Show();
+    //}
+    protected void MessageBox_ShowAsync(Func<MessageBoxResult, Task> resultAction, string messageBoxText,
+    string caption = "", MessageBoxButton button = MessageBoxButton.OK,
+    MessageBoxImage icon = MessageBoxImage.None,
+    MessageBoxResult defaultResult = MessageBoxResult.None, MessageBoxOptions options = MessageBoxOptions.None)
+    {
+        var args = new MessageBoxEventArgs(resultAction, messageBoxText, caption, button, icon, defaultResult, options);
+        MessageBoxRequest?.Invoke(this, args);
+        //args.Show();
+    }
+
 
     protected void OnPropertyChange(string propertyName = null)
     {

@@ -16,9 +16,10 @@ public class MessageBoxEventArgs
     private readonly string messageBoxText;
     private readonly MessageBoxOptions options;
 
-    private readonly Action<MessageBoxResult> resultAction;
+    private readonly Func<MessageBoxResult, Task> resultAction;
+    private readonly Action<MessageBoxResult> resultAct;
 
-    public MessageBoxEventArgs(Action<MessageBoxResult> resultAction, string messageBoxText,
+    public MessageBoxEventArgs(Func<MessageBoxResult, Task> resultAction, string messageBoxText,
         string caption = "", MessageBoxButton button = MessageBoxButton.OK,
         MessageBoxImage icon = MessageBoxImage.None, MessageBoxResult defaultResult = MessageBoxResult.None,
         MessageBoxOptions options = MessageBoxOptions.None)
@@ -32,11 +33,31 @@ public class MessageBoxEventArgs
         this.options = options;
     }
 
+    public MessageBoxEventArgs(Action<MessageBoxResult> resultAction, string messageBoxText,
+        string caption = "", MessageBoxButton button = MessageBoxButton.OK,
+        MessageBoxImage icon = MessageBoxImage.None, MessageBoxResult defaultResult = MessageBoxResult.None,
+        MessageBoxOptions options = MessageBoxOptions.None)
+    {
+        resultAct = resultAction;
+        this.messageBoxText = messageBoxText;
+        this.caption = caption;
+        this.button = button;
+        this.icon = icon;
+        this.defaultResult = defaultResult;
+        this.options = options;
+    }
     public void Show()
     {
         MessageBoxResult messageBoxResult =
             MessageBox.Show(messageBoxText, caption, button, icon, defaultResult, options);
         if (resultAction != null)
             resultAction(messageBoxResult);
+        else if (resultAct != null)
+            resultAct(messageBoxResult);
     }
+    //public void Show()
+    //{
+    //    Result = MessageBox.Show(messageBoxText, caption, button, icon, defaultResult, options);
+    //    resultAction?.Invoke(Result);
+    //}
 }

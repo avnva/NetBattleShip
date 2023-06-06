@@ -15,5 +15,6 @@ public enum RequestType : byte
     StartGame = 8,
     CheckOpponentCell = 9,
     OpponentMove = 10,
-    CellState = 11
+    CellState = 11,
+    Reconnect = 12
 }

@@ -12,6 +12,7 @@ namespace BattleShip;
 public class Player
 {
     public IPEndPoint IpEndPoint;
+    public int Port;
     private TcpClient _playerSocket;
     private Thread _ping;
     private NetworkStream _networkStream;
@@ -24,7 +25,7 @@ public class Player
     public bool IsOpponentReady;
     public bool IsOpponentConnected = false;
     public event EventHandler CheckOpponentOnlineEvent;
-    public event EventHandler ServerDisconnected;
+    public event Func<Task> ServerDisconnected;
     public Player()
     {
         _lastPingTime = DateTime.Now.Second;
@@ -33,7 +34,7 @@ public class Player
     }
 
     public string Name { get; set; }
-    public async Task ConnectAsync(IPAddress ip, int port)
+    public async Task<bool> ConnectAsync(IPAddress ip, int port)
     {
         try
         {
@@ -42,12 +43,14 @@ public class Player
 
             await _playerSocket.ConnectAsync(IpEndPoint);
             _networkStream = _playerSocket.GetStream();
-            //_ping = new Thread(WaitForPing);
-            //_ping.Start();
+            _ping = new Thread(WaitForPing);
+            _ping.Start();
+            Port = port;
+            return true;
         }
         catch
         {
-            throw new Exception("Неверный IP адрес");
+            return false;
         }
     }
     public int GetPort(IPEndPoint ip)
@@ -63,7 +66,7 @@ public class Player
         StartCheckingOpponent();
     }
 
-    public async Task ConnectToNewPort(IPEndPoint ip, Response response)
+    public async Task<bool> ConnectToNewPort(IPEndPoint ip, Response response)
     {
         if (int.TryParse(response.Contents, out var port))
         {
@@ -73,13 +76,13 @@ public class Player
             _playerSocket = new TcpClient();
             await _playerSocket.ConnectAsync(IpEndPoint);
             _networkStream = _playerSocket.GetStream();
-
-            //ping = new Thread(WaitForPing);
-            //ping.Start();
-            //return true;
+            Port = port;
+            //_ping = new Thread(WaitForPing);
+            //_ping.Start();
+            return true;
         }
-        //else
-        //    return false;
+        else
+            return false;
     }
 
     private System.Timers.Timer _timer;
@@ -126,9 +129,13 @@ public class Player
             {
                 _lastPingTime = DateTime.Now.Second;
                 if (!await PingAsync())
+                {
+                    _ping.Interrupt();
                     break;
+                }   
             }
         }
+        await OnServerDisconnected();
     }
     private async Task<bool> PingAsync()
     {
@@ -140,15 +147,13 @@ public class Player
         }
         catch
         {
-            OnServerDisconnected();
-            throw new Exception("Сервер прервал подключение.");
-            //CloseSocket();
-            //return false;
+            CloseSocket();
+            return false;
         }
     }
-    private void OnServerDisconnected()
+    private async Task OnServerDisconnected()
     {
-        ServerDisconnected?.Invoke(this, EventArgs.Empty);
+        ServerDisconnected?.Invoke();
     }
     public async Task SendRequestAsync(string message)
     {
@@ -176,10 +181,13 @@ public class Player
                 return new Response(RequestType.CreateNewGame,
                     GetBoolResponseAsync(buffer));
             case RequestType.JoinToGame:
-                await ConnectToNewPort(IpEndPoint, new Response(RequestType.Port,
-                   await GetStringResponseAsync(buffer, bytesRead)));
+                if(await ConnectToNewPort(IpEndPoint, new Response(RequestType.Port,
+                   await GetStringResponseAsync(buffer, bytesRead))))
                 return new Response(RequestType.JoinToGame,
-                    GetBoolResponseAsync(buffer));
+                    true);
+                else
+                    return new Response(RequestType.JoinToGame,
+                    false);
             case RequestType.WaitingOpponent:
                 return new Response(RequestType.WaitingOpponent,
                     GetBoolResponseAsync(buffer));
@@ -198,6 +206,14 @@ public class Player
             case RequestType.OpponentMove:
                 return new Response(RequestType.OpponentMove,
                     await GetStringResponseAsync(buffer, bytesRead));
+            case RequestType.Reconnect:
+                if (await ConnectToNewPort(IpEndPoint, new Response(RequestType.Port,
+                   await GetStringResponseAsync(buffer, bytesRead))))
+                    return new Response(RequestType.Reconnect,
+                        true);
+                else
+                    return new Response(RequestType.Reconnect,
+                    false);
             default:
                 throw new ApplicationException("Invalid signature!");
         }

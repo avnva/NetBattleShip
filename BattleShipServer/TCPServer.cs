@@ -37,10 +37,44 @@ public class TCPServer
             clientHandler.GetNewPortRequested += HandleCreateNewGameRoom;
             clientHandler.GetExistingPortRequested += HandleJoinToExistingGameRoom;
             clientHandler.DisconnectRequest += Disconnect;
+            clientHandler.ReconnectRequest += Reconnect;
             clientHandler.Start();
         }
     }
 
+    private async Task<bool> Reconnect(int reconnectedPort, TcpClient client)
+    {
+        Port ConnectionPort = null;
+        
+        foreach (Port port in _ports)
+        {
+            if (port.PortValue == reconnectedPort)
+            {
+                ConnectionPort = port;
+                break;
+            }
+        }
+
+        if (ConnectionPort == null)
+        {
+            //await SendBoolMessage(client, false, RequestType.Reconnect);
+            _logger.Log($" >> Server sent: invalid room number");
+            return true;
+        }
+        else
+        {
+            ConnectionPort.Occupied = true;
+            TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.Reconnect);
+            //await SendBoolMessage(newClient, true, RequestType.Reconnect);
+            if (roomManager.FindGameRoom(ConnectionPort) == null)
+                roomManager.AddPlayerToNewRoom(newClient, ConnectionPort);
+            else
+                roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
+            //roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
+            _logger.Log($" >> Client reconnecting on port {reconnectedPort}");
+            return false;
+        }
+    }
     private async Task CreateNewGame(Port port, TcpClient client)
     {
         if (roomManager.CheckPlayersConnection(port))
@@ -71,8 +105,8 @@ public class TCPServer
         ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
         clientHandler.Start();
         clientHandler.CheckOnline += CheckOnline;
-        if(type == RequestType.Port)
-            clientHandler.CreateNewGameRequested += CreateNewGame;
+        //if(type == RequestType.Port)
+        clientHandler.CreateNewGameRequested += CreateNewGame;
         clientHandler.DisconnectRequest += Disconnect;
         clientHandler.StartGameRequested += HandleStartGame;
         clientHandler.SendCoordinateToOpponentRequested += CheckPlayerReady;
@@ -128,6 +162,7 @@ public class TCPServer
         if (ConnectionPort == null)
         {
             await SendStringMessage(client, "Такой комнаты не существует", RequestType.JoinToGame);
+            //await SendBoolMessage(client, false, RequestType.JoinToGame);
             _logger.Log($" >> Server sent: invalid room number");
             return true;
         }
@@ -137,14 +172,14 @@ public class TCPServer
             {
                 roomManager.GetConnectionRoom(ConnectionPort);
                 TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.JoinToGame);
-                await SendBoolMessage(newClient, true, RequestType.JoinToGame);
+                //await SendBoolMessage(newClient, true, RequestType.JoinToGame);
                 roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
                 return false;
             }
             catch (Exception ex)
             {
                 await SendStringMessage(client, ex.Message, RequestType.JoinToGame);
-                await SendBoolMessage(client, false, RequestType.JoinToGame);
+                //await SendBoolMessage(client, false, RequestType.JoinToGame);
                 _logger.Log($" >> Server sent: invalid room number");
                 return true;
             }
