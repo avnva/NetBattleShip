@@ -309,7 +309,8 @@ public class LogInViewModel:ViewModelBase
                     {
                         _requestSuccess = true;
                         Hide?.Invoke();
-                        OpenNewView(new GameView(new GameViewModel(_player)));
+                        _player.ServerDisconnected -= ServerDisconnected;
+                        OpenNewView(new GameView(new GameViewModel(_player, _startPort)));
                         MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
                         Close?.Invoke();
                     }
@@ -341,7 +342,8 @@ public class LogInViewModel:ViewModelBase
                     {
                         Application.Current.Dispatcher.Invoke(() => {
                             _requestSuccess = true;
-                            OpenNewView(new GameView(new GameViewModel(_player)));
+                            _player.ServerDisconnected -= ServerDisconnected;
+                            OpenNewView(new GameView(new GameViewModel(_player, _startPort)));
                             Hide?.Invoke();
                             MessageBox_Show(null, _manual, "Начало игры", MessageBoxButton.OK, MessageBoxImage.Information);
                             Close?.Invoke();

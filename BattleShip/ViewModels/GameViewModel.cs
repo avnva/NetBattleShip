@@ -29,6 +29,9 @@ public class GameViewModel : ViewModelBase
     private GameManager _gameManager;
     private Player _player;
     private RequestParser _requestParser;
+    private int _startPort;
+    public string LastRequest;
+    public bool RequestSuccess;
 
     private string _chooseShipText = "Выберите корабль:";
     private string _selectedShipText = "Выбран корабль: ";
@@ -43,7 +46,7 @@ public class GameViewModel : ViewModelBase
         "Успехов!\n";
 
     private string _startGameRequest = "Start game";
-    private string _endOfTurnRequest = "End of turn";
+    //private string _endOfTurnRequest = "End of turn";
 
 
     private Visibility _visibilityComboBox;
@@ -52,17 +55,23 @@ public class GameViewModel : ViewModelBase
     private Visibility _visibilityChooseDirectionPanel;
     private Visibility _visibilityDeleteButton;
     private Visibility _visibilityWaitOpponentText;
-    public GameViewModel(Player player)
+    public GameViewModel(Player player, int startPort)
     {
         _player = player;
+        _startPort = startPort;
         _gameManager = new GameManager(_player);
         _requestParser = new RequestParser();
+        OpponentConnectionText = _opponentOnlineText;
+        _player.StartCheckingOpponent();
+        _player.ServerDisconnected += ServerDisconnected;
         _gameManager.PlayerCellsChanged += OnPlayerCellsChanged;
         _gameManager.EnemyCellsChanged += OnEnemyCellsChanged;
         _player.CheckOpponentOnlineEvent += ChangeStatusOpponentOnline;
         _gameManager.CellUpdated += CellUpdated;
         _gameManager.EnemyCellUpdated += EnemyCellUpdated;
         _gameManager.AvailableShipsChanged += OnAvailableShipsChanged;
+        _gameManager.LastRequestChanged += OnLastRequestChanged;
+        _gameManager.RequestSuccessedChanged += OnRequestSuccessedChanged;
         PlayerCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.PlayerCells));
         EnemyCells = new ObservableCollection<CellViewModel>();
         AvailableShips = new ObservableCollection<Ship>(_gameManager.AvailableShips);
@@ -72,18 +81,28 @@ public class GameViewModel : ViewModelBase
         ChangeVisibilityComboBox = Visibility.Visible;
         CurrentCommandCellButton = AddShipCommand;
         CurrentCommandEnemyCellButton = HitShipCommand;
-        
+        IsEnabledControls = true;
 
+    }
+    private void OnLastRequestChanged()
+    {
+        LastRequest = _gameManager.LastRequest;
+    }
+    private void OnRequestSuccessedChanged()
+    {
+        RequestSuccess = _gameManager.RequestSuccess;
     }
     private void ChangeStatusOpponentOnline(object sender, EventArgs e)
     {
         if (_player.IsOpponentConnected)
         {
             OpponentConnectionText = _opponentOnlineText;
+            IsEnabledControls = true;
         }
         else
         {
             OpponentConnectionText = _opponentOfflineText;
+            IsEnabledControls = false;
         }
     }
 
@@ -146,7 +165,54 @@ public class GameViewModel : ViewModelBase
 
         return cellViewModels;
     }
+    private bool connectFlag = false;
+    private async Task HandleFirstMessageBoxResult(MessageBoxResult result)
+    {
+        string _reconnectRequest = "Reconnect to port: ";
+        if (result == MessageBoxResult.Yes)
+        {
+            int port = _player.Port;
+            bool connect = false;
+            while (connectFlag != true)
+            {
+                connectFlag = await _player.ConnectAsync(_player.IpEndPoint.Address, _startPort);
+                if (connectFlag == false)
+                {
+                    MessageBox_Show(HandleSecondMessageBoxResult, "Ошибка подключения. Попробовать снова?", "Предупреждение", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                }
+                else
+                    connect = true;
+            }
+            if (connect)
+            {
+                if (port != _startPort)
+                    await SendRequest(_reconnectRequest + port);
+            }
+            else
+            {
+                Environment.Exit(0);
+            }
+        }
+        else if (result == MessageBoxResult.No)
+        {
+            Environment.Exit(0);
+        }
+    }
+    private void HandleSecondMessageBoxResult(MessageBoxResult result)
+    {
+        if (result == MessageBoxResult.Yes)
+            connectFlag = false;
+        else
+        {
+            Environment.Exit(0);
+        }
 
+    }
+    private async Task ServerDisconnected()
+    {
+        _player.StopCheckingOpponent();
+        MessageBox_ShowAsync(HandleFirstMessageBoxResult, "Сервер отключился. Хотите переподключиться?", "Предупреждение", MessageBoxButton.YesNo);
+    }
 
     public ObservableCollection<Ship> AvailableShips
     {
@@ -182,6 +248,16 @@ public class GameViewModel : ViewModelBase
             CurrentTextStateLabel = _selectedShipText + Environment.NewLine + SelectedShip.Name;
             HideControls();
             ChangeVisibilityCancellationButton = Visibility.Visible;
+        }
+    }
+    private bool _isEnabledControls;
+    public bool IsEnabledControls
+    {
+        get { return _isEnabledControls; }
+        set
+        {
+            _isEnabledControls = value;
+            OnPropertyChange(nameof(IsEnabledControls));
         }
     }
 
@@ -445,6 +521,9 @@ public class GameViewModel : ViewModelBase
         HideControls();
         ChangeVisibilityWaitOpponentText = Visibility.Visible;
         CurrentCommandCellButton = null;
+        LastRequest = _startGameRequest;
+        RequestSuccess = false;
+        _player.StopCheckingOpponent();
         SendRequest(_startGameRequest);
     }
     private async Task SendRequest(string request)
@@ -459,19 +538,33 @@ public class GameViewModel : ViewModelBase
                 case RequestType.StartGame:
                     if (response.Flag)
                     {
+                        RequestSuccess = true;
                         _gameManager.GenerateEnemyField();
                         EnemyCells = new ObservableCollection<CellViewModel>(ConvertToCellViewModels(_gameManager.EnemyCells));
                         HideControls();
                         CurrentTextStateLabel = _yourTurnText;
                         MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _player.StartCheckingOpponent();
                     }
                     else
                     {
+                        RequestSuccess = true;
                         HideControls();
                         _gameManager.GenerateEnemyField();
                         MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _player.StartCheckingOpponent();
                         await OpponentMove();
-                        
+                    }
+                    break;
+                case RequestType.Reconnect:
+                    if (response.Flag)
+                    {
+                        MessageBox_Show(null, "Успешно!", "Переподключение", MessageBoxButton.OK, MessageBoxImage.Information);
+                        if (RequestSuccess == false)
+                        {
+                            if (LastRequest != null)
+                                await SendRequest(LastRequest);
+                        }
                     }
                     break;
                 default:
@@ -516,7 +609,8 @@ public class GameViewModel : ViewModelBase
         bool flag = false;
         CurrentCommandEnemyCellButton = null;
         CurrentTextStateLabel = _opponentTurnText;
-        while(flag == false)
+        _player.StopCheckingOpponent();
+        while (flag == false)
         {
            flag = await _gameManager.IsOpponentMove();
         }
@@ -532,6 +626,7 @@ public class GameViewModel : ViewModelBase
             MessageBox_Show(null, "You lose!", "", MessageBoxButton.OK, MessageBoxImage.Information);
             
         }
+        _player.StartCheckingOpponent();
     }
     private void WaitingRespone()
     {
@@ -548,6 +643,7 @@ public class GameViewModel : ViewModelBase
         if (cell.State == CellState.Empty)
         {
             WaitingRespone();
+            _player.StopCheckingOpponent();
             HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
             ResponseRecieved();
             if (_gameManager.PlayerScore == _gameManager.MaxNumberOfPoints)
@@ -561,6 +657,7 @@ public class GameViewModel : ViewModelBase
                 //await _player.SendRequestAsync(_requestParser.Parse(_endOfTurnRequest));
                 await OpponentMove();
             }
+            _player.StartCheckingOpponent();
         }
         else
         {

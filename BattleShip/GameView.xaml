@@ -44,7 +44,7 @@
                        HorizontalContentAlignment="Center"
                        Width="300" Grid.Row="0" Grid.Column="3" Margin="0,0,0,300" Grid.RowSpan="2"/>
 
-        <ItemsControl ItemsSource="{Binding PlayerCells}" Grid.Row="1" Grid.Column="1">
+        <ItemsControl ItemsSource="{Binding PlayerCells}" Grid.Row="1" Grid.Column="1" IsEnabled="{Binding IsEnabledControls}">
             <ItemsControl.ItemContainerStyle>
                 <Style>
                     <Setter Property="Control.Margin" Value="-1"/>
@@ -60,6 +60,7 @@
                     <Border BorderBrush="#1E2460" BorderThickness="2">
                         <Button Command="{Binding DataContext.CurrentCommandCellButton, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
                                 Background="{Binding CellColor}"
+                                
                                 CommandParameter="{Binding RelativeSource={RelativeSource Self}, Path=Tag}"
                                 Width="50" Height="50">
                             <Button.Tag>
@@ -85,7 +86,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <ItemsControl ItemsSource="{Binding EnemyCells}" Grid.Row="1" Grid.Column="3">
+        <ItemsControl ItemsSource="{Binding EnemyCells}" Grid.Row="1" Grid.Column="3" IsEnabled="{Binding IsEnabledControls}">
             <ItemsControl.ItemContainerStyle>
                 <Style>
                     <Setter Property="Control.Margin" Value="-1"/>
@@ -102,6 +103,7 @@
                         <Button Command="{Binding DataContext.CurrentCommandEnemyCellButton, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Window}}"
                                 CommandParameter="{Binding RelativeSource={RelativeSource Self}, Path=Tag}"
                                 Width="50" Height="50"
+                                
                                 Background="{Binding CellColor}">
                             <Button.Tag>
                                 <MultiBinding Converter="{StaticResource CellPositionConverter}">
@@ -144,6 +146,7 @@
             <ComboBox Style="{StaticResource ComboBoxStyle}"
                 ItemsSource="{Binding AvailableShips}" 
               SelectedItem="{Binding SelectedShip}" 
+             IsEnabled="{Binding IsEnabledControls}"
               Visibility="{Binding ChangeVisibilityComboBox}"
               Height="25" Margin="30,32,30,110" Grid.RowSpan="2">
                 <ComboBox.ItemTemplate>
@@ -159,17 +162,19 @@
             </ComboBox>
         </Grid>
         <Label Style="{StaticResource LabelStyle}"
-                       FontSize ="18"
+                       FontSize ="12"
+                       FontWeight="Medium"
                        Content="{Binding OpponentConnectionText}"
                        HorizontalAlignment="Center"
-                       HorizontalContentAlignment="Center"
-                       VerticalContentAlignment="Top"
-                       Width="300" Grid.Row="3" Grid.Column="1" Margin="0,250,0,22" Grid.RowSpan="2"/>
+                       HorizontalContentAlignment="Left"
+                       VerticalContentAlignment="Center"
+                       Width="300" Grid.Row="3" Grid.Column="1" Margin="0,250,0,0" Grid.RowSpan="2"/>
 
         <Button x:Name="ReadyToGame"
                     Content="Начать игру!" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
                     Command="{Binding StartGameCommand}"
+                    IsEnabled="{Binding IsEnabledControls}"
                     Visibility="{Binding ChangeVisibilityReadyButton}" 
                     Grid.Column="1" Grid.Row="3" 
                     Height="40" Width="215" Margin="0,35,0,0"/>
@@ -178,6 +183,7 @@
                     Content="Удалить" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Center"
                     Command="{Binding DeleteShipCommand}"
+                    IsEnabled="{Binding IsEnabledControls}"
                     Visibility="{Binding ChangeVisibilityDeleteButton}" 
                     Grid.Column="1" Grid.Row="3" 
                     Height="40" Width="215" Margin="0,89,0,0"/>
@@ -187,6 +193,7 @@
                     Style="{StaticResource ButtonStyle}" 
                     VerticalAlignment="Top" HorizontalAlignment="Center"
                     Command="{Binding CancellationChoiseCommand}"
+                    IsEnabled="{Binding IsEnabledControls}"
                     Visibility="{Binding ChangeVisibilityCancellationButton}" 
                     Grid.Column="1" Grid.Row="3" 
                     Height="37" Width="215" Margin="0,90,0,0"/>
@@ -196,6 +203,7 @@
                 Style="{StaticResource RadioButtonStyle}" 
                 Content="Горизонтальное" 
                 IsChecked="True"
+                IsEnabled="{Binding IsEnabledControls}"
                 Command="{Binding SetDirectionCommand}" 
                 CommandParameter="{x:Static local:ShipDirection.Horizontal}"
                 GroupName="ShipDirection" Height="22"
@@ -204,6 +212,7 @@
             <RadioButton 
                 Style="{StaticResource RadioButtonStyle}" 
                 Command="{Binding SetDirectionCommand}" 
+                IsEnabled="{Binding IsEnabledControls}"
                 CommandParameter="{x:Static local:ShipDirection.Vertical}"
                 Visibility="{Binding ChangeVisibilityChooseDirectionPanel}"
                 Content="Вертикальное" 

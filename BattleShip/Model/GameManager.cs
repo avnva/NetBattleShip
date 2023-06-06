@@ -26,10 +26,14 @@ public class GameManager
     private Cell _cell;
     private Player _player;
     private RequestParser _requestParser;
+    private string _lastRequest;
+    private bool _requestSuccess;
     public int PlayerScore;
     public int OpponentScore;
     public int MaxNumberOfPoints;
 
+    public event Action LastRequestChanged;
+    public event Action RequestSuccessedChanged;
     public event Action PlayerCellsChanged;
     public event Action EnemyCellsChanged;
     public event Action AvailableShipsChanged;
@@ -61,7 +65,7 @@ public class GameManager
             new Ship(1),
             new Ship(1),
             new Ship(1),
-            //new Ship(1),
+            new Ship(1),
             new Ship(2),
             new Ship(2),
             new Ship(2),
@@ -100,6 +104,24 @@ public class GameManager
             OnAvailableShipsChanged();
         }
     }
+    public string LastRequest
+    {
+        get { return _lastRequest; }
+        set
+        {
+            _lastRequest = value;
+            OnLastRequestChanged();
+        }
+    }
+    public bool RequestSuccess
+    {
+        get { return _requestSuccess; }
+        set
+        {
+            _requestSuccess = value;
+            OnRequestSuccessedChanged();
+        }
+    }
 
     public List<Cell> PlayerCells
     {
@@ -128,7 +150,14 @@ public class GameManager
             UpdateCell(_cell);
         }
     }
-
+    protected virtual void OnLastRequestChanged()
+    {
+        LastRequestChanged?.Invoke();
+    }
+    protected virtual void OnRequestSuccessedChanged()
+    {
+        RequestSuccessedChanged?.Invoke();
+    }
     protected virtual void OnPlayerCellsChanged()
     {
         PlayerCellsChanged?.Invoke();
@@ -657,15 +686,20 @@ public class GameManager
 
     public async Task<HitState> HitCell(int row, int column)
     {
-        _player.StopCheckingOpponent();
         string BadResponse = "Try again";
         Cell cell = _enemyCells.FirstOrDefault(c => c.Row == row && c.Column == column);
+        LastRequest = _hitsCellRequest + $"row:{row} " + $"column:{column}";
+        RequestSuccess = false;
         Response response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+        RequestSuccess = true;
         BadResponse = response.Contents;
         while (BadResponse.Contains("Try again"))
         {
+            LastRequest = _hitsCellRequest + $"row:{row} " + $"column:{column}";
+            RequestSuccess = false;
             response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
             BadResponse = response.Contents;
+            RequestSuccess = true;
         }
         HitState state = GetCellStateFromResponse(response.Contents);
         //_player.StartCheckingOpponent();
@@ -688,9 +722,10 @@ public class GameManager
 
     public async Task<bool> IsOpponentMove()
     {
-        _player.StopCheckingOpponent();
-
+        LastRequest = _waitCellForCheckRequest;
+        RequestSuccess = false;
         Response response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_waitCellForCheckRequest));
+        RequestSuccess = true;
         if (GetCellFromResponse(response.Contents) != null)
         {
             Cell checkedCell = GetCellFromResponse(response.Contents);
@@ -702,7 +737,10 @@ public class GameManager
                 int shipSize = DeterminingShipSize(firstCell, shipDirection, CellState.Hit);
                 if (shipSize == 0)
                 {
+                    LastRequest = _cellStateRequest + HitState.Kill.ToString();
+                    RequestSuccess = false;
                     await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Kill.ToString()));
+                    RequestSuccess = true;
                     OpponentScore++;
                     if(OpponentScore == MaxNumberOfPoints)
                     {
@@ -711,19 +749,26 @@ public class GameManager
                     }
                 }
                 else
+                {
+                    LastRequest = _cellStateRequest + HitState.Hit.ToString();
+                    RequestSuccess = false;
                     await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Hit.ToString()));
+                    RequestSuccess = true;
+                }
+                    
             }
             else if (checkedCell.State == CellState.Empty)
             {
                 checkedCell.State = CellState.Miss;
                 UpdateCell(checkedCell);
+                LastRequest = _cellStateRequest + HitState.Miss.ToString();
+                RequestSuccess = false;
                 await _player.SendRequestAsync(_requestParser.Parse(_cellStateRequest + HitState.Miss.ToString()));
+                RequestSuccess = true;
                 return true;
             }
             UpdateCell(checkedCell);
-            //_player.StartCheckingOpponent();
         }
-        //_player.StartCheckingOpponent();
         return false;
     }
 
