@@ -527,9 +527,10 @@ public class GameViewModel : ViewModelBase
         }
         else if (_gameManager.OpponentScore == _gameManager.MaxNumberOfPoints)
         {
-            MessageBox_Show(null, "You lose!", "", MessageBoxButton.OK, MessageBoxImage.Information);
             CurrentCommandEnemyCellButton = null;
             CurrentTextStateLabel = "Вы проиграли!";
+            MessageBox_Show(null, "You lose!", "", MessageBoxButton.OK, MessageBoxImage.Information);
+            
         }
     }
     private void WaitingRespone()
@@ -551,9 +552,9 @@ public class GameViewModel : ViewModelBase
             ResponseRecieved();
             if (_gameManager.PlayerScore == _gameManager.MaxNumberOfPoints)
             {
-                MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
                 CurrentCommandEnemyCellButton = null;
                 CurrentTextStateLabel = "Вы победили!";
+                MessageBox_Show(null, "You win!", "", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             if (hitState == HitState.Miss)
             {

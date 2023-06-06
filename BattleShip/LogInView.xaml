@@ -83,19 +83,17 @@
                        Grid.Row="2" Grid.Column="1" 
                        Margin="0,0,0,1" Width="284"/>
 
-                <xctk:MaskedTextBox x:Name="tbIP" Mask="{Binding CurrentMaskFormat}" 
-                                    FontFamily="Verdana" FontSize="16" 
-                                    Grid.Row="1" Grid.Column="2" 
-                                    PromptChar =" "
-                                    HidePromptOnLeave ="False"
-                                    TextAlignment="Center"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Margin="5,10,17,10"
-                                    Text="{Binding CurrentBindingMaskedTextBox}"
-                                    Visibility="{Binding ChangeVisibilityConnectControls}"
-                                    IsEnabled="{Binding IsEnabledMaskedTb}" 
-                                    Width="250" Height="34"/>
+                <TextBox x:Name="tbIP" 
+                        FontFamily="Verdana" FontSize="16" 
+                        Grid.Row="1" Grid.Column="2" 
+                        TextAlignment="Center"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="5,10,17,10"
+                        Text="{Binding CurrentBindingTextBox}"
+                        Visibility="{Binding ChangeVisibilityConnectControls}"
+                        IsEnabled="{Binding IsEnabledTb}" 
+                        Width="250" Height="34"/>
 
                 <TextBox Style="{StaticResource TextBoxStyle}" 
                          Grid.Row="2" Grid.Column="2" 
@@ -103,17 +101,24 @@
                          Text="{Binding Name}"
                          Visibility="{Binding ChangeVisibilityNameControls}"/>
 
-                <Button Name="CreateNewGame" Template="{DynamicResource btLogIn}" 
-                    Content="{StaticResource LogInButtonCreateNewGame}" 
-                    Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Command="{Binding CreateNewGame}" Margin="58,0,0,0"
-                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49" Width="200"/>
+                <Button Name="CreateNewGame" 
+                        Template="{DynamicResource btLogIn}" 
+                        Content="{StaticResource LogInButtonCreateNewGame}" 
+                        Style="{StaticResource ButtonStyle}" 
+                        VerticalAlignment="Center" HorizontalAlignment="Left"
+                        Command="{Binding CreateNewGameCommand}" 
+                        Margin="58,0,0,0"
+                        Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="1" Grid.Row="3" Height="49" Width="200"/>
 
                 <Button Name="EnjoyToGame" Template="{DynamicResource btLogIn}" 
-                    Content="{StaticResource LogInButtonEnjoyToGame}" 
-                    Style="{StaticResource ButtonStyle}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Command="{Binding ConnectToExistingGameRoom}" Margin="35,0,0,0"
-                    Visibility="{Binding ChangeVisibilityChoiseControls}" Grid.Column="2" Grid.Row="3" Height="49" Width="200"/>
+                        Content="{StaticResource LogInButtonEnjoyToGame}" 
+                        Style="{StaticResource ButtonStyle}" 
+                        VerticalAlignment="Center" HorizontalAlignment="Left"
+                        Command="{Binding ConnectToExistingGameRoomCommand}" 
+                        Margin="35,0,0,0"
+                        Visibility="{Binding ChangeVisibilityChoiseControls}" 
+                        Grid.Column="2" Grid.Row="3" Height="49" Width="200"/>
+                
                 <Label Style="{StaticResource LabelStyle}"
                        FontWeight="Medium"
                        Content="{Binding OpponentConnectTextChange}"
@@ -130,7 +135,7 @@
                     <ColumnDefinition Width="68*"/>
                 </Grid.ColumnDefinitions>
                 <Button Name="ConnectToServer" Template="{DynamicResource btLogIn}" 
-                    Content="{StaticResource LogInButtonHeading}" 
+                    Content="{Binding CurrentContentConnectButton}" 
                     Style="{StaticResource ButtonStyle}" VerticalAlignment="Top" HorizontalAlignment="Left"
                     Command="{Binding CurrentCommandConnectButton}"
                     Visibility="{Binding ChangeVisibilityConnectButton}"

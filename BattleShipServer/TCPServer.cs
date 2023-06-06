@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
-using System.Threading.Tasks;
-using System.Data.Common;
-using System.Runtime.CompilerServices;
-using System.ComponentModel;
 
 namespace BattleShipServer;
 
@@ -19,7 +12,6 @@ public class TCPServer
     private int portsAmount = 1000;
     private GameRoomManager roomManager;
 
-
     public TCPServer(ILogger logger)
     {
         _ports = new Port[1000];
@@ -29,7 +21,6 @@ public class TCPServer
         roomManager = new GameRoomManager();
         InitializePorts();
     }
-
     public async Task Start()
     {
         TcpListener listener = new TcpListener(IPAddress.Any, startPort.PortValue);
@@ -78,8 +69,8 @@ public class TCPServer
         _logger.Log($" >> Client connected on port {newPort.PortValue}");
 
         ClientHandler clientHandler = new ClientHandler(cl, _logger, newPort);
-        clientHandler.CheckOnline += CheckOnline;
         clientHandler.Start();
+        clientHandler.CheckOnline += CheckOnline;
         if(type == RequestType.Port)
             clientHandler.CreateNewGameRequested += CreateNewGame;
         clientHandler.DisconnectRequest += Disconnect;
@@ -95,9 +86,8 @@ public class TCPServer
         Port newPort = FindFreePort();
         _logger.Log($" >> Found new port: {newPort.PortValue}");
         TcpClient newClient = await RedirectingToNewPort(client, newPort, RequestType.Port);
-        
 
-        AddClientToNewGameRoom(newClient, newPort);
+        roomManager.AddPlayerToNewRoom(newClient, newPort);
         _logger.Log($" >> Client connected to new game room");
         
     }
@@ -110,6 +100,7 @@ public class TCPServer
             await SendBoolMessage(opponent, false, RequestType.StartGame);
         else
             await SendBoolMessage(opponent, true, RequestType.StartGame);
+        _logger.Log($" >> Server sent: start game on port {port.PortValue}");
     }
 
     private async Task CheckOnline(Port port, TcpClient client) 
@@ -117,31 +108,52 @@ public class TCPServer
         bool opponentConnect = roomManager.CheckPlayersConnection(port);
         await SendBoolMessage(client, opponentConnect, RequestType.Online);
         if (opponentConnect)
-             _logger.Log($" >> Server sent: opponent is found");
+             _logger.Log($" >> Server sent: opponent on port {port.PortValue} is found");
         else
-            _logger.Log($" >> Server sent: opponent not found");
+            _logger.Log($" >> Server sent: opponent on port {port.PortValue} not found");
 
     }
-    private async Task HandleJoinToExistingGameRoom(TcpClient client, int portValue)
+    private async Task<bool> HandleJoinToExistingGameRoom(TcpClient client, int portValue)
     {
         Port ConnectionPort = null;
         foreach (Port port in _ports)
-            if (port.PortValue == portValue || port.Occupied == true)
+        {
+            if (port.PortValue == portValue && port.Occupied == true)
             {
                 ConnectionPort = port;
                 break;
             }
+        }
 
         if (ConnectionPort == null)
-            throw new ArgumentNullException("Такой порт не существует");
+        {
+            await SendStringMessage(client, "Такой комнаты не существует", RequestType.JoinToGame);
+            _logger.Log($" >> Server sent: invalid room number");
+            return true;
+        }
         else
         {
-            TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.JoinToGame);
-            roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
-            _logger.Log($" >> Client connected to existing game room");
-            //await SendMessage(newClient, true, RequestType.JoinToGame);
-            //_logger.Log($" >> Server sent: connection successful");
+            try
+            {
+                roomManager.GetConnectionRoom(ConnectionPort);
+                TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.JoinToGame);
+                await SendBoolMessage(newClient, true, RequestType.JoinToGame);
+                roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                await SendStringMessage(client, ex.Message, RequestType.JoinToGame);
+                await SendBoolMessage(client, false, RequestType.JoinToGame);
+                _logger.Log($" >> Server sent: invalid room number");
+                return true;
+            }
         }
+    }
+    private void SetReadiness(Port port)
+    {
+        roomManager.SetPlayerReady(true, port);
+        _logger.Log($" >> Server sent: opponent on port {port} ready");
     }
     private async Task CheckPlayerReady(Port port, TcpClient client, string message)
     {
@@ -154,10 +166,8 @@ public class TCPServer
         else
         {
             await SendStringMessage(client, "Try again", RequestType.CheckOpponentCell);
-            _logger.Log($" >> Try Again");
-            //await SendStateToOpponent(port, client, "Try again");
+            _logger.Log($" >> Server sent: try again");
         }
-         
     }
     private async Task SendCoordinateToOpponent(Port port, TcpClient client, string message)
     {
@@ -165,8 +175,8 @@ public class TCPServer
         if (opponent == client)
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.OpponentMove);
-        //await SendBoolMessage(client, true, RequestType.CheckOpponentCell);
-        _logger.Log($" >> Server sent coordinate: {message}");
+
+        _logger.Log($" >> Server sent coordinate on port {port}: {message}");
     }
     private async Task SendStateToOpponent(Port port, TcpClient client, string message)
     {
@@ -175,58 +185,38 @@ public class TCPServer
         if (opponent == client)
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.CheckOpponentCell);
-        _logger.Log($" >> Server sent cell state: {message}");
+        _logger.Log($" >> Server sent cell state on port {port}: {message}");
     }
-    private void SetReadiness(Port port)
-    {
-        roomManager.SetPlayerReady(true, port);
-        _logger.Log($" >> Opponent ready");
-    }
-    
     private async Task SendStringMessage(TcpClient client, string value, RequestType type)
     {
-        NetworkStream networkStream = client.GetStream();
-        byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
-
-        responseBytes[0] = (byte)type;
-        Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
-
-        await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
-        await networkStream.FlushAsync();
+        byte[] bytes = Encoding.UTF8.GetBytes($"{value}"),
+            responseBytes = new byte[bytes.Length + 1];
+        await SendMessage(bytes, responseBytes, client, type);
     }
     private async Task SendBoolMessage(TcpClient client, bool value, RequestType type)
     {
-        NetworkStream networkStream = client.GetStream();
-        //byte[] bytes = Encoding.UTF8.GetBytes($"{value}"), responseBytes = new byte[bytes.Length + 1];
         byte[] bytes = BitConverter.GetBytes(value);
         byte[] responseBytes = new byte[bytes.Length + 1];
-
-        responseBytes[0] = (byte)type;
-        Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
-
-        await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
-        await networkStream.FlushAsync();
-    }
-
-    private void AddClientToNewGameRoom(TcpClient client, Port port)
-    {
-        roomManager.AddPlayerToNewRoom(client, port);
+        await SendMessage(bytes, responseBytes, client, type);
     }
 
     private async Task SendNewPort(TcpClient client, Port port, RequestType type)
     {
-        NetworkStream networkStream = client.GetStream();
-        byte[] bytes = Encoding.UTF8.GetBytes($"{port.PortValue}"), responseBytes = new byte[bytes.Length + 1];
+        byte[] bytes = Encoding.UTF8.GetBytes($"{port.PortValue}"), 
+            responseBytes = new byte[bytes.Length + 1];
 
+        await SendMessage(bytes, responseBytes, client, type);
+        await Disconnect(null, client);
+    }
+    private async Task SendMessage(byte[] bytes, byte[] responseBytes, TcpClient client, RequestType type)
+    {
+        NetworkStream networkStream = client.GetStream();
         responseBytes[0] = (byte)type;
         Array.Copy(bytes, 0, responseBytes, 1, bytes.Length);
 
         await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
         await networkStream.FlushAsync();
-
-        Disconnect(null, client);
     }
-
     private async Task<TcpClient> WaitForConnection(Port port)
     {
         TcpListener listener = new TcpListener(IPAddress.Any, port.PortValue);
@@ -238,39 +228,47 @@ public class TCPServer
         _logger.Log($" >> Socket on port {port.PortValue} started!");
         return client;
     }
-
     private Port FindFreePort()
     {
         foreach (Port port in _ports)
             if (port.Occupied == false)
+            {
+                port.Occupied = true;
                 return port;
-
+            }
         throw new ApplicationException("There is no free port.");
     }
-
     private void InitializePorts()
     {
         for (int i = 0; i < portsAmount; i++)
             _ports[i] = new Port(startPort.PortValue + 1 + i, false);
     }
-
-    private void Disconnect(Port port, TcpClient client)
+    private async Task Disconnect(Port? port, TcpClient client)
     {
-        
         client.Close();
         client.Dispose();
-        _logger.Log(" >> Client disconnected");
         if (port != null)
         {
-            roomManager.RemovePlayerFromGameRoom(port, client);
-            _logger.Log($" >> Disconnect client on port {port.PortValue}");
-            TcpClient opponent = roomManager.GetOpponent(client, port);
-            if (opponent != client)
+            if (roomManager.FindGameRoom(port) != null)
             {
-                SendBoolMessage(opponent, false, RequestType.Online);
-                _logger.Log($" >> Server sent: opponent disconnected");
-            }   
+                roomManager.RemovePlayerFromGameRoom(port, client);
+                _logger.Log($" >> Disconnect client on port {port.PortValue}");
+                TcpClient opponent = roomManager.GetOpponent(client, port);
+                if (opponent != client)
+                {
+                    await SendBoolMessage(opponent, false, RequestType.Online);
+                    _logger.Log($" >> Server sent: opponent on port {port.PortValue} disconnected");
+                }
+                else
+                {
+                    port.Occupied = false;
+                    _logger.Log($" >> Server sent: port {port.PortValue} is released");
+                }
+            }
+            else
+            {
+                _logger.Log(" >> Client disconnected");
+            }
         }
     }
-
 }

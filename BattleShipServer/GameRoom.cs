@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net.Sockets;
 
 namespace BattleShipServer;
 public class GameRoom
 {
-    public List<TcpClient> players;
-    public bool IsGameRoomBusy { get; set; }
-    public bool IsGameStarted { get; set; }
-    public Port Port { get; set; }
     private int _maxPlayers = 2;
+    public List<TcpClient> players;
+    public Port Port { get; set; }
     public bool IsFirstPlayerSet;
     public bool IsPlayerReady { get; set; }
     public GameRoom(Port port)
@@ -20,22 +13,18 @@ public class GameRoom
         players = new List<TcpClient>();
         Port = port;
     }
-
     public void AddPlayer(TcpClient player)
     {
-        players.Add(player ?? throw new ArgumentNullException());
+        players.Add(player ?? throw new ArgumentNullException(nameof(players)));
     }
-
     public void RemovePlayer(TcpClient player)
     {
-        players.Remove(player ?? throw new ArgumentNullException());
+        players.Remove(player ?? throw new ArgumentNullException(nameof(players)));
     }
-
     public bool IsFull()
     {
-        return players.Count >= _maxPlayers;
+        return players.Count == _maxPlayers;
     }
-
     public bool IsEmpty()
     {
         return players.Count == 0;

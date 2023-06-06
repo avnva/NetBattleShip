@@ -1,27 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net.Sockets;
 
 namespace BattleShipServer;
 public class GameRoomManager
 {
     private List<GameRoom> _gameRooms;
-
     public GameRoomManager()
     {
         _gameRooms = new List<GameRoom>();
     }
-    //public bool IsAvailableRoomExists()
-    //{
-    //    GameRoom connectionRoom = GetConnectionRoom();
-    //    if (connectionRoom != null)
-    //        return true;
-    //    else
-    //        return false;
-    //}
     public bool IsPlayerReady(Port port)
     {
         GameRoom room = FindGameRoom(port);
@@ -32,7 +18,6 @@ public class GameRoomManager
         GameRoom room = FindGameRoom(port);
         room.IsPlayerReady = value;
     }
-
     public bool IsFirstPlayer(TcpClient client, Port port)
     {
         GameRoom room = FindGameRoom(port);
@@ -43,7 +28,6 @@ public class GameRoomManager
         }
         return false;   
     }
-
     public void AddPlayerToExistsRoom(TcpClient player, Port port)
     {
         GameRoom connectionRoom = GetConnectionRoom(port);
@@ -54,34 +38,29 @@ public class GameRoomManager
         GameRoom newRoom = CreateGameRoom(port);
         newRoom.AddPlayer(player);
     }
-
-    private GameRoom GetConnectionRoom(Port port)
+    public GameRoom GetConnectionRoom(Port port)
     {
         GameRoom connectionRoom = null;
         foreach (GameRoom room in _gameRooms)
         {
-            if (room.Port == port || !room.IsFull())
+            if (room.Port == port)
             {
                 if (!room.IsFull())
                 {
                     if (!room.IsEmpty())
                     {
                         connectionRoom = room;
-                        break;
+                        return connectionRoom;
                     }
                     else
-                        throw new ArgumentException("Противник отключился от игры");
+                        throw new ArgumentException("Комната не найдена");
                 }
                 else
                     throw new ArgumentException("Комната уже занята");
-            }
-            else
-                throw new ArgumentException("Комната не найдена");
+            } 
         }
-
-        return connectionRoom;
+        throw new ArgumentException("Комната не найдена");
     }
-
     public void RemovePlayerFromGameRoom(Port port, TcpClient player)
     {
         GameRoom room = FindGameRoom(port);
@@ -92,7 +71,7 @@ public class GameRoomManager
                 RemoveGameRoom(room);
         }
     }
-    private GameRoom FindGameRoom(Port port)
+    public GameRoom? FindGameRoom(Port port)
     {
         foreach (GameRoom room in _gameRooms)
         {
@@ -102,18 +81,6 @@ public class GameRoomManager
             }
         }
         return null;
-    }
-
-    private void RemoveGameRoom(GameRoom gameRoom)
-    {
-        _gameRooms.Remove(gameRoom);
-    }
-
-    private GameRoom CreateGameRoom(Port port)
-    {
-        GameRoom gameRoom = new GameRoom(port);
-        _gameRooms.Add(gameRoom);
-        return gameRoom;
     }
     public bool CheckPlayersConnection(Port port)
     {
@@ -126,7 +93,6 @@ public class GameRoomManager
         }
         return false;
     }
-
     public TcpClient GetOpponent(TcpClient client, Port port)
     {
         foreach (GameRoom room in _gameRooms)
@@ -139,5 +105,16 @@ public class GameRoomManager
             }
         }
         return client;
+    }
+    private void RemoveGameRoom(GameRoom gameRoom)
+    {
+        _gameRooms.Remove(gameRoom);
+    }
+
+    private GameRoom CreateGameRoom(Port port)
+    {
+        GameRoom gameRoom = new GameRoom(port);
+        _gameRooms.Add(gameRoom);
+        return gameRoom;
     }
 }

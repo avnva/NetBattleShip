@@ -10,20 +10,18 @@ public class ClientHandler : IDisposable
     private ILogger logger;
     public Port port;
     private NetworkStream networkStream;
-    Thread thread;
+    private Thread thread;
     private bool _isActiv;
-    public GameRoom GameRoom { get; private set; }
 
-    public event Func<TcpClient, int, Task> GetExistingPortRequested;
+    public event Func<TcpClient, int, Task<bool>> GetExistingPortRequested;
     public event Func<TcpClient, Task> GetNewPortRequested;
     public event Func<Port, TcpClient, Task> StartGameRequested;
     public event Func<Port, TcpClient, Task> CheckOnline;
     public event Func<Port, TcpClient, Task> CreateNewGameRequested;
-    public event Action<Port, TcpClient> DisconnectRequest;
+    public event Func<Port, TcpClient, Task> DisconnectRequest;
     public event Func<Port, TcpClient, string, Task> SendCoordinateToOpponentRequested;
     public event Func<Port, TcpClient, string, Task> SendCellStateToOpponentRequested;
     public event Action<Port> SetReadinessRequested;
-
 
     public ClientHandler(TcpClient client, ILogger logger, Port _port)
     {
@@ -34,14 +32,12 @@ public class ClientHandler : IDisposable
         networkStream = this.client.GetStream();
         this.logger = logger;
     }
-
     public void Start()
     {
         _isActiv = true;
         thread = new Thread(Listen);
         thread.Start();
     }
-
     private async void Listen()
     {
         try
@@ -57,13 +53,11 @@ public class ClientHandler : IDisposable
                 logger.Log($"Socket server received message: \"{request}\"");
             }
         }
-        catch (Exception ex)
+        catch
         {
             Disconnect();
         }
     }
-
-
     private async Task GetRequest(byte[] buffer, StringBuilder request)
     {
         CheckConneciton();
@@ -79,7 +73,6 @@ public class ClientHandler : IDisposable
             bytesRead = await networkStream.ReadAsync(buffer, 0, buffer.Length);
         }
     }
-
     private async Task SendResponse(string request)
     {
         byte[] type = Encoding.UTF8.GetBytes(request.Substring(0, 1));
@@ -155,7 +148,6 @@ public class ClientHandler : IDisposable
         else
             throw new ArgumentNullException(nameof(SendCoordinateToOpponentRequested));
     }
-
     private async Task StartGame()
     {
         if (StartGameRequested != null)
@@ -170,7 +162,6 @@ public class ClientHandler : IDisposable
         else
             throw new ArgumentNullException(nameof(CreateNewGameRequested));
     }
-
     private async Task CheckOpponentOnline()
     {
         if (CheckOnline != null)
@@ -178,7 +169,6 @@ public class ClientHandler : IDisposable
         else
             throw new ArgumentNullException(nameof(CheckOnline));
     }
-
     private string GetPortFromRequest(string request) 
     {
         string result = Regex.Replace(request, @"[^\d]", "");
@@ -191,15 +181,6 @@ public class ClientHandler : IDisposable
         else
             throw new ArgumentNullException(nameof(DisconnectRequest));
     }
-
-
-    private string GetPort()
-    {
-        int value = port.PortValue;
-        string strPort = value.ToString();
-        return strPort;
-    }
-
     private async Task CreateNewGameRoom()
     {
         if (GetNewPortRequested != null)
@@ -207,7 +188,6 @@ public class ClientHandler : IDisposable
         else
             throw new ArgumentNullException(nameof(GetNewPortRequested));
     }
-
     private async Task JoinToExistingGameRoom(string PortValue)
     {
         int ConnectionPortValue = 0;
@@ -218,11 +198,11 @@ public class ClientHandler : IDisposable
 
         if (ConnectionPortValue != 0)
         {
-            if (GetExistingPortRequested != null)
-                await GetExistingPortRequested.Invoke(client, ConnectionPortValue);
-            else
-                throw new ArgumentNullException(nameof(GetExistingPortRequested));
-        }
+        if (GetExistingPortRequested != null)
+            _isActiv = await GetExistingPortRequested.Invoke(client, ConnectionPortValue);
+        else
+            throw new ArgumentNullException(nameof(GetExistingPortRequested));
+    }
         else
             throw new ArgumentException();
     }
@@ -238,22 +218,11 @@ public class ClientHandler : IDisposable
         await networkStream.WriteAsync(responseBytes, 0, responseBytes.Length);
         await networkStream.FlushAsync();
     }
-
-
     private void CheckConneciton()
     {
         if (client.Connected == false)
             Disconnect();
     }
-
-    //private void Disconnect()
-    //{
-    //    //port.Occupied = false;
-    //    client.Close();
-    //    client.Dispose();
-    //    logger.Log(" >> Client disconnected");
-    //}
-
     public void Dispose()
     {
         Disconnect();
