@@ -4,7 +4,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Navigation;
 
-namespace BattleShip;
+
 public class CellStateToColorConverter : IValueConverter
 {
     BrushConverter converter = new BrushConverter();

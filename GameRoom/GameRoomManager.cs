@@ -1,6 +1,5 @@
 ﻿using System.Net.Sockets;
 
-namespace BattleShipServer;
 public class GameRoomManager
 {
     private List<GameRoom> _gameRooms;

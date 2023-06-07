@@ -79,7 +79,7 @@
                        Content="{StaticResource NameHeading}"
                        HorizontalAlignment="Center"
                        HorizontalContentAlignment="Right"
-                       Visibility="{Binding ChangeVisibilityNameControls}"
+                       Visibility="Collapsed"
                        Grid.Row="2" Grid.Column="1" 
                        Margin="0,0,0,1" Width="284"/>
 
@@ -99,7 +99,7 @@
                          Grid.Row="2" Grid.Column="2" 
                          x:Name="tb_playername" Margin="5,10,17,10"
                          Text="{Binding Name}"
-                         Visibility="{Binding ChangeVisibilityNameControls}"/>
+                         Visibility="Collapsed"/>
 
                 <Button Name="CreateNewGame" 
                         Template="{DynamicResource btLogIn}" 

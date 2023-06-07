@@ -1,5 +1,4 @@
-﻿namespace BattleShipServer;
-
+﻿
 public enum RequestType : byte
 {
     CreateNewGame = 0,
@@ -16,4 +15,5 @@ public enum RequestType : byte
     CellState = 11,
     Reconnect = 12
 }
+
 

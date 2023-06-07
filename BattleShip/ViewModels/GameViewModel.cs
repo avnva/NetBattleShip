@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows;
 using System.Data.Common;
 using BattleShip.Model;
+using System.Threading;
 
 namespace BattleShip;
 public enum ShipDirection
@@ -646,6 +647,7 @@ public class GameViewModel : ViewModelBase
             WaitingRespone();
             _player.StopCheckingOpponent();
             HitState hitState = await _gameManager.HitCell(cell.Row, cell.Column);
+            
             ResponseRecieved();
             if (_gameManager.PlayerScore == _gameManager.MaxNumberOfPoints)
             {
@@ -656,9 +658,11 @@ public class GameViewModel : ViewModelBase
             if (hitState == HitState.Miss)
             {
                 //await _player.SendRequestAsync(_requestParser.Parse(_endOfTurnRequest));
+                //_player.StartCheckingOpponent();
                 await OpponentMove();
             }
-            _player.StartCheckingOpponent();
+            int milliseconds = 1000;
+            Thread.Sleep(milliseconds);
         }
         else
         {

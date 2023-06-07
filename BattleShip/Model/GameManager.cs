@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data.Common;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using Xceed.Wpf.Toolkit;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BattleShip.Model;
 public enum HitState
@@ -683,9 +678,9 @@ public class GameManager
             UpdateEnemyCell(cell);
         }
     }
-
     public async Task<HitState> HitCell(int row, int column)
     {
+        _player.StopCheckingOpponent();
         string BadResponse = "Try again";
         Cell cell = _enemyCells.FirstOrDefault(c => c.Row == row && c.Column == column);
         LastRequest = _hitsCellRequest + $"row:{row} " + $"column:{column}";
@@ -693,16 +688,17 @@ public class GameManager
         Response response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
         RequestSuccess = true;
         BadResponse = response.Contents;
-        while (BadResponse.Contains("Try again"))
+        int counter = 0;
+        while (counter != 5 && BadResponse.Contains("Try again"))
         {
             LastRequest = _hitsCellRequest + $"row:{row} " + $"column:{column}";
             RequestSuccess = false;
             response = await _player.SendRequestWithResponseAsync(_requestParser.Parse(_hitsCellRequest + $"row:{row} " + $"column:{column}"));
+            counter++;
             BadResponse = response.Contents;
             RequestSuccess = true;
         }
         HitState state = GetCellStateFromResponse(response.Contents);
-        //_player.StartCheckingOpponent();
         if (state == HitState.Kill)
         {
             cell.State = CellState.Hit;

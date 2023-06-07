@@ -16,6 +16,9 @@
 		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
+	  <ProjectReference Include="..\Request\Request.csproj" />
+	</ItemGroup>
+	<ItemGroup>
 	  <Resource Include="Images\Background.jpg" />
 	  <Resource Include="Images\IconBattleShip.png" />
 	  <Resource Include="Images\Waves.jpg" />

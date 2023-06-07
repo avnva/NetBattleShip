@@ -1,5 +1,4 @@
 ﻿
-namespace BattleShipServer;
 public class Port
 {
     public int PortValue { get; }

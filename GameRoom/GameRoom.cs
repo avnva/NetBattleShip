@@ -1,6 +1,6 @@
 ﻿using System.Net.Sockets;
 
-namespace BattleShipServer;
+
 public class GameRoom
 {
     private int _maxPlayers = 2;

@@ -5,8 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BattleShip;
-
 public class RequestParser
 {
     private byte _createNewGameRequest = 0;

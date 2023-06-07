@@ -196,7 +196,7 @@ public class TCPServer
     {
         bool startFlag;
         startFlag = roomManager.IsPlayerReady(port);
-        if (startFlag || message.Contains("End of turn"))
+        if (startFlag)
         {
             await SendCoordinateToOpponent(port, client, message);
         }
