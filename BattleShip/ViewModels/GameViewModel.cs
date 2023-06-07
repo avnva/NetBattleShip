@@ -510,6 +510,7 @@ public class GameViewModel : ViewModelBase
         {
             return _startGame ?? (_startGame = new RelayCommand(
                 _execute => {
+                    
                     StartGame();
                 },
                 _canExecute => true
@@ -518,12 +519,12 @@ public class GameViewModel : ViewModelBase
     }
     private void StartGame()
     {
+        _player.StopCheckingOpponent();
         HideControls();
         ChangeVisibilityWaitOpponentText = Visibility.Visible;
         CurrentCommandCellButton = null;
         LastRequest = _startGameRequest;
         RequestSuccess = false;
-        _player.StopCheckingOpponent();
         SendRequest(_startGameRequest);
     }
     private async Task SendRequest(string request)
@@ -552,7 +553,7 @@ public class GameViewModel : ViewModelBase
                         HideControls();
                         _gameManager.GenerateEnemyField();
                         MessageBox_Show(null, _manual, "Старт игры", MessageBoxButton.OK, MessageBoxImage.Information);
-                        _player.StartCheckingOpponent();
+                        //_player.StartCheckingOpponent();
                         await OpponentMove();
                     }
                     break;

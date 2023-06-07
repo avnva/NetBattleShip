@@ -130,10 +130,12 @@ public class TCPServer
         TcpClient opponent = roomManager.GetOpponent(client, port);
         if (opponent == client)
             throw new Exception("Error");
-        if (roomManager.IsFirstPlayer(client, port))
-            await SendBoolMessage(opponent, false, RequestType.StartGame);
-        else
+        if (!roomManager.IsFirstPlayer(client, port))
+        {
+            await SendBoolMessage(client, false, RequestType.StartGame);
             await SendBoolMessage(opponent, true, RequestType.StartGame);
+        }
+            
         _logger.Log($" >> Server sent: start game on port {port.PortValue}");
     }
 
