@@ -57,7 +57,6 @@ public class TCPServer
 
         if (ConnectionPort == null)
         {
-            //await SendBoolMessage(client, false, RequestType.Reconnect);
             _logger.Log($" >> Server sent: invalid room number");
             return true;
         }
@@ -65,12 +64,10 @@ public class TCPServer
         {
             ConnectionPort.Occupied = true;
             TcpClient newClient = await RedirectingToNewPort(client, ConnectionPort, RequestType.Reconnect);
-            //await SendBoolMessage(newClient, true, RequestType.Reconnect);
             if (roomManager.FindGameRoom(ConnectionPort) == null)
                 roomManager.AddPlayerToNewRoom(newClient, ConnectionPort);
             else
                 roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
-            //roomManager.AddPlayerToExistsRoom(newClient, ConnectionPort);
             _logger.Log($" >> Client reconnecting on port {reconnectedPort}");
             return false;
         }
@@ -190,7 +187,7 @@ public class TCPServer
     private void SetReadiness(Port port)
     {
         roomManager.SetPlayerReady(true, port);
-        _logger.Log($" >> Server sent: opponent on port {port} ready");
+        _logger.Log($" >> Server sent: opponent on port {port.PortValue} ready");
     }
     private async Task CheckPlayerReady(Port port, TcpClient client, string message)
     {
@@ -213,7 +210,7 @@ public class TCPServer
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.OpponentMove);
 
-        _logger.Log($" >> Server sent coordinate on port {port}: {message}");
+        _logger.Log($" >> Server sent coordinate on port {port.PortValue}: {message}");
     }
     private async Task SendStateToOpponent(Port port, TcpClient client, string message)
     {
@@ -222,7 +219,7 @@ public class TCPServer
         if (opponent == client)
             throw new Exception("Error");
         await SendStringMessage(opponent, message, RequestType.CheckOpponentCell);
-        _logger.Log($" >> Server sent cell state on port {port}: {message}");
+        _logger.Log($" >> Server sent cell state on port {port.PortValue}: {message}");
     }
     private async Task SendStringMessage(TcpClient client, string value, RequestType type)
     {
